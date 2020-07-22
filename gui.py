@@ -8,7 +8,7 @@ from crop_objects import crop_objects
 from image_converter import wxBitmapFromCvImage
 
 
-def optimalize_bitmap_person_height(bitmap):
+def optimize_bitmap_person_height(bitmap):
     if bitmap.GetHeight() > 300:
         image = bitmap.ConvertToImage()
         calculated_width = (bitmap.GetWidth() * 300) / bitmap.GetHeight()
@@ -16,7 +16,7 @@ def optimalize_bitmap_person_height(bitmap):
     return bitmap
 
 
-def optimalize_bitmap_person_width(bitmap):
+def optimize_bitmap_person_width(bitmap):
     if bitmap.GetWidth() > 700:
         image = bitmap.ConvertToImage()
         calculated_height = (bitmap.GetHeight() * 700) / bitmap.GetWidth()
@@ -71,7 +71,7 @@ class AppPanel(wx.Panel):
             #result_image, detected_objects = recognize_persons(photo)
             #self.list_of_images = crop_objects(photo, detected_objects)
             converted_image = wxBitmapFromCvImage(photo)
-            bitmap = optimalize_bitmap_person_width(wx.Bitmap(converted_image))
+            bitmap = optimize_bitmap_person_width(wx.Bitmap(converted_image))
             self.image_ctrl2.SetBitmap(bitmap)
 
     def tag_persons(self, event):
