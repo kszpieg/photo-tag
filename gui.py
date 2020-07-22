@@ -30,7 +30,6 @@ class AppPanel(wx.Panel):
         main_sizer = wx.BoxSizer(wx.HORIZONTAL)
         left_sizer = wx.BoxSizer(wx.VERTICAL)
         btn_main_sizer = wx.BoxSizer(wx.HORIZONTAL)
-        btn_recognized_sizer = wx.BoxSizer(wx.HORIZONTAL)
         right_sizer = wx.BoxSizer(wx.VERTICAL)
         self.row_obj_dict = {}
         self.list_of_images = []
@@ -44,24 +43,12 @@ class AppPanel(wx.Panel):
         self.list_ctrl.InsertColumn(0, "File name", width=280)
         self.list_ctrl.InsertColumn(1, "File extension", width=100)
         left_sizer.Add(self.list_ctrl, 0, wx.ALL | wx.EXPAND, 5)
-        btn_data = [("Run recognizer", btn_main_sizer, self.on_run),
-                    ("Run recognizer for all", btn_main_sizer, self.on_run_all)]
+        btn_data = [("Select image", btn_main_sizer, self.select_photo),
+                    ("Generate album", btn_main_sizer, self.open_generator_window)]
         for data in btn_data:
             label, sizer, handler = data
             self.btn_builder(label, sizer, handler)
         left_sizer.Add(btn_main_sizer, 0, wx.CENTER)
-        bmp_person = wx.Image(200, 300)
-        self.image_ctrl1 = wx.StaticBitmap(self, wx.ID_ANY, wx.Bitmap(bmp_person))
-        left_sizer.Add(self.image_ctrl1, 0, wx.ALL | wx.CENTER, 5)
-        self.image_label = wx.StaticText(self, label="")
-        left_sizer.Add(self.image_label, 0, wx.ALL | wx.CENTER, 5)
-        btn_data = [("Previous", btn_recognized_sizer, self.on_previous),
-                    ("Choose person", btn_recognized_sizer, self.on_save_person),
-                    ("Next", btn_recognized_sizer, self.on_next)]
-        for data in btn_data:
-            label, sizer, handler = data
-            self.btn_builder(label, sizer, handler)
-        left_sizer.Add(btn_recognized_sizer, 0, wx.CENTER)
 
         bmp_image = wx.Image(400, 400)
         self.image_ctrl2 = wx.StaticBitmap(self, wx.ID_ANY, wx.Bitmap(bmp_image))
@@ -76,50 +63,19 @@ class AppPanel(wx.Panel):
         btn.Bind(wx.EVT_BUTTON, handler)
         sizer.Add(btn, 0, wx.ALL | wx.CENTER, 5)
 
-    def on_run(self, event):
+    def select_photo(self, event):
         selection = self.list_ctrl.GetFocusedItem()
         if selection >= 0:
             photo = self.row_obj_dict[selection]
-            result_image, detected_objects = recognize_persons(photo)
-            self.list_of_images = crop_objects(photo, detected_objects)
-            converted_image = wxBitmapFromCvImage(result_image)
+            #result_image, detected_objects = recognize_persons(photo)
+            #self.list_of_images = crop_objects(photo, detected_objects)
+            converted_image = wxBitmapFromCvImage(photo)
             bitmap = optimalize_bitmap_person_width(wx.Bitmap(converted_image))
             self.image_ctrl2.SetBitmap(bitmap)
-            self.update_detected_persons()
 
-    def on_run_all(self):
+    def open_generator_window(self):
         print("Not implemented")
 
-    def on_previous(self, event):
-        if self.current_person == 0:
-            self.current_person = self.total_persons - 1
-        else:
-            self.current_person -= 1
-        converted_image = wxBitmapFromCvImage(self.list_of_images[self.current_person])
-        bitmap = optimalize_bitmap_person_height(wx.Bitmap(converted_image))
-        self.image_ctrl1.SetBitmap(bitmap)
-        self.image_label.SetLabelText("Person " + str(self.current_person))
-
-    def on_next(self, event):
-        if self.current_person == self.total_persons - 1:
-            self.current_person = 0
-        else:
-            self.current_person += 1
-        converted_image = wxBitmapFromCvImage(self.list_of_images[self.current_person])
-        bitmap = optimalize_bitmap_person_height(wx.Bitmap(converted_image))
-        self.image_ctrl1.SetBitmap(bitmap)
-        self.image_label.SetLabelText("Person " + str(self.current_person))
-
-    def on_save_person(self):
-        print("Not implemented")
-
-    def update_detected_persons(self):
-        self.current_person = 0
-        self.total_persons = len(self.list_of_images)
-        converted_image = wxBitmapFromCvImage(self.list_of_images[self.current_person])
-        bitmap = optimalize_bitmap_person_height(wx.Bitmap(converted_image))
-        self.image_ctrl1.SetBitmap(bitmap)
-        self.image_label.SetLabelText("Person " + str(self.current_person))
 
     def update_files_listing(self, folder_path):
         self.current_folder_path = folder_path
@@ -150,6 +106,7 @@ class AppFrame(wx.Frame):
         self.panel = AppPanel(self)
         self.create_menu()
         self.SetMinSize((1450, 650))
+        self.Maximize()
         self.Show()
 
     def create_menu(self):
