@@ -8,19 +8,15 @@ from crop_objects import crop_objects
 from image_converter import wxBitmapFromCvImage
 
 
-def optimize_bitmap_person_height(bitmap):
-    if bitmap.GetHeight() > 300:
-        image = bitmap.ConvertToImage()
-        calculated_width = (bitmap.GetWidth() * 300) / bitmap.GetHeight()
-        bitmap = wx.Bitmap(image.Scale(calculated_width, 300))
-    return bitmap
-
-
-def optimize_bitmap_person_width(bitmap):
+def optimize_bitmap_person(bitmap):
     if bitmap.GetWidth() > 700:
         image = bitmap.ConvertToImage()
         calculated_height = (bitmap.GetHeight() * 700) / bitmap.GetWidth()
         bitmap = wx.Bitmap(image.Scale(700, calculated_height))
+    if bitmap.GetHeight() > 700:
+        image = bitmap.ConvertToImage()
+        calculated_width = (bitmap.GetWidth() * 700) / bitmap.GetHeight()
+        bitmap = wx.Bitmap(image.Scale(calculated_width, 700))
     return bitmap
 
 
@@ -51,7 +47,7 @@ class AppPanel(wx.Panel):
             self.btn_builder(label, sizer, handler)
         left_sizer.Add(btn_main_sizer, 0, wx.CENTER)
 
-        bmp_image = wx.Image(400, 400)
+        bmp_image = wx.Image(wx.EXPAND, wx.EXPAND)
         self.image_ctrl2 = wx.StaticBitmap(self, wx.ID_ANY, wx.Bitmap(bmp_image))
         right_sizer.Add(self.image_ctrl2, 0, wx.ALL | wx.ALIGN_LEFT, 5)
 
@@ -71,8 +67,10 @@ class AppPanel(wx.Panel):
             #result_image, detected_objects = recognize_persons(photo)
             #self.list_of_images = crop_objects(photo, detected_objects)
             converted_image = wxBitmapFromCvImage(photo)
-            bitmap = optimize_bitmap_person_width(wx.Bitmap(converted_image))
+            bitmap = optimize_bitmap_person(wx.Bitmap(converted_image))
             self.image_ctrl2.SetBitmap(bitmap)
+            self.Refresh()
+            self.Layout()
 
     def tag_persons(self, event):
         print("Not implemented")
@@ -109,7 +107,7 @@ class AppFrame(wx.Frame):
         super(AppFrame, self).__init__(parent=None, title="Album Generator")
         self.panel = AppPanel(self)
         self.create_menu()
-        self.SetMinSize((1450, 650))
+        self.SetMinSize((1450, 750))
         self.Maximize()
         self.Show()
 
