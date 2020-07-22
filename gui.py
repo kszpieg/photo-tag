@@ -44,6 +44,7 @@ class AppPanel(wx.Panel):
         self.list_ctrl.InsertColumn(1, "File extension", width=100)
         left_sizer.Add(self.list_ctrl, 0, wx.ALL | wx.EXPAND, 5)
         btn_data = [("Select image", btn_main_sizer, self.select_photo),
+                    ("Tag person on this photo", btn_main_sizer, self.tag_persons),
                     ("Generate album", btn_main_sizer, self.open_generator_window)]
         for data in btn_data:
             label, sizer, handler = data
@@ -52,7 +53,7 @@ class AppPanel(wx.Panel):
 
         bmp_image = wx.Image(400, 400)
         self.image_ctrl2 = wx.StaticBitmap(self, wx.ID_ANY, wx.Bitmap(bmp_image))
-        right_sizer.Add(self.image_ctrl2, 0, wx.ALL | wx.ALIGN_CENTER, 5)
+        right_sizer.Add(self.image_ctrl2, 0, wx.ALL | wx.ALIGN_LEFT, 5)
 
         main_sizer.Add(left_sizer, wx.ALIGN_LEFT, 5)
         main_sizer.Add(right_sizer, wx.ALIGN_RIGHT, 5)
@@ -72,6 +73,9 @@ class AppPanel(wx.Panel):
             converted_image = wxBitmapFromCvImage(photo)
             bitmap = optimalize_bitmap_person_width(wx.Bitmap(converted_image))
             self.image_ctrl2.SetBitmap(bitmap)
+
+    def tag_persons(self, event):
+        print("Not implemented")
 
     def open_generator_window(self):
         print("Not implemented")
@@ -102,7 +106,7 @@ class AppPanel(wx.Panel):
 
 class AppFrame(wx.Frame):
     def __init__(self):
-        super(AppFrame, self).__init__(parent=None, title="Person Recognizer")
+        super(AppFrame, self).__init__(parent=None, title="Album Generator")
         self.panel = AppPanel(self)
         self.create_menu()
         self.SetMinSize((1450, 650))
