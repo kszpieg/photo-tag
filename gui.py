@@ -48,6 +48,7 @@ class AppPanel(wx.Panel):
         self.ix = -1
         self.iy = -1
         self.drawing = False
+        self.window_closed = True
 
         self.list_ctrl = wx.ListCtrl(
             self, size=(650, 150),
@@ -144,7 +145,10 @@ class AppPanel(wx.Panel):
             self.drawing = False
             cv2.rectangle(img, pt1=(self.ix, self.iy), pt2=(x, y), color=(0, 255, 255), thickness=2)
             cv2.imshow(window_name, img)
-
+            if self.window_closed:
+                self.window_closed = False
+                second_window = TagDetailsFrame()
+                second_window.Show()
 
     def save_tags_on_the_photo(self, event):
         print("Not implemented")
@@ -206,6 +210,45 @@ class AppFrame(wx.Frame):
         if dlg.ShowModal() == wx.ID_OK:
             self.panel.update_files_listing(dlg.GetPath())
         dlg.Destroy()
+
+
+class TagDetailsFrame(wx.Frame):
+    def __init__(self):
+        wx.Frame.__init__(self, None, wx.ID_ANY, "Tag Details")
+        panel = wx.Panel(self)
+
+        main_sizer = wx.BoxSizer(wx.VERTICAL)
+
+        msg_rate = "Tag\'s rate:"
+        rate_text = wx.StaticText(panel, label=msg_rate)
+
+        slider = wx.Slider(panel, value=5, minValue=0, maxValue=10, style=wx.SL_HORIZONTAL | wx.SL_LABELS)
+        slider.Bind(wx.EVT_SLIDER, self.on_slider_scroll)
+
+        checkbox_eyes = wx.CheckBox(panel, label="Person's eyes are closed")
+        checkbox_blurred = wx.CheckBox(panel, label="Person is blurred")
+        checkbox_others = wx.CheckBox(panel, label="Others defects (red eyes, look not at the camera, etc.)")
+
+        close_btn = wx.Button(panel, label="Save tag and close")
+        close_btn.Bind(wx.EVT_BUTTON, self.on_save_and_close)
+
+        main_sizer.Add(rate_text, 0, wx.TOP | wx.CENTER, 5)
+        main_sizer.Add(slider, 0, wx.EXPAND | wx.TOP, 10)
+        main_sizer.Add(checkbox_eyes, 0, wx.EXPAND | wx.CENTER, 5)
+        main_sizer.Add(checkbox_blurred, 0, wx.EXPAND | wx.CENTER, 5)
+        main_sizer.Add(checkbox_others, 0, wx.EXPAND | wx.CENTER, 5)
+        main_sizer.Add(close_btn, 0, wx.CENTER | wx.BOTTOM, 10)
+
+        panel.SetSizer(main_sizer)
+
+    def on_slider_scroll(self, event):
+        obj = event.GetEventObject()
+        value = obj.GetValue()
+        font = self.GetFont()
+        font.SetPointSize(self.slider.GetValue())
+
+    def on_save_and_close(self, event):
+        print("Btn clicked")
 
 
 if __name__ == '__main__':
