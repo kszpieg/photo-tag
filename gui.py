@@ -45,6 +45,9 @@ class AppPanel(wx.Panel):
         self.file_names = []
         self.selection = 0
         self.label_photo = ""
+        self.ix = -1
+        self.iy = -1
+        self.drawing = False
 
         self.list_ctrl = wx.ListCtrl(
             self, size=(650, 150),
@@ -68,9 +71,9 @@ class AppPanel(wx.Panel):
         right_sizer.Add(self.image_label, 0, wx.ALL | wx.CENTER, 5)
 
         btn_data_under_photo = [("Previous image", btn_image_sizer, self.previous_image),
-                    ("Make tag", btn_image_sizer, self.tag_persons),
-                    ("Save tags", btn_image_sizer, self.save_tags_on_the_photo),
-                    ("Next image", btn_image_sizer, self.next_image)]
+                                ("Make tag", btn_image_sizer, self.tag_persons),
+                                ("Save tags", btn_image_sizer, self.save_tags_on_the_photo),
+                                ("Next image", btn_image_sizer, self.next_image)]
         for data in btn_data_under_photo:
             label, sizer, handler = data
             self.btn_builder(label, sizer, handler)
@@ -89,8 +92,8 @@ class AppPanel(wx.Panel):
         self.selection = self.list_ctrl.GetFocusedItem()
         if self.selection >= 0:
             photo = self.row_obj_dict[self.selection]
-            #result_image, detected_objects = recognize_persons(photo)
-            #self.list_of_images = crop_objects(photo, detected_objects)
+            # result_image, detected_objects = recognize_persons(photo)
+            # self.list_of_images = crop_objects(photo, detected_objects)
             converted_image = wxBitmapFromCvImage(photo)
             bitmap = optimize_bitmap_person(wx.Bitmap(converted_image))
             self.image_ctrl.SetBitmap(bitmap)
@@ -124,15 +127,30 @@ class AppPanel(wx.Panel):
         window_name = "Make tag on the photo"
         photo = self.row_obj_dict[self.selection]
         optimized_photo = optimize_cv_image(photo)
+        window_data = [window_name, optimized_photo]
         cv2.namedWindow(window_name)
+        cv2.setMouseCallback(window_name, self.draw_rectangle_with_drag, window_data)
         cv2.imshow(window_name, optimized_photo)
+
+    def draw_rectangle_with_drag(self, event, x, y, flags, param):
+        window_name = param[0]
+        img = param[1]
+        if event == cv2.EVENT_LBUTTONDOWN:
+            self.drawing = True
+            self.ix = x
+            self.iy = y
+
+        elif event == cv2.EVENT_LBUTTONUP:
+            self.drawing = False
+            cv2.rectangle(img, pt1=(self.ix, self.iy), pt2=(x, y), color=(0, 255, 255), thickness=2)
+            cv2.imshow(window_name, img)
+
 
     def save_tags_on_the_photo(self, event):
         print("Not implemented")
 
     def open_generator_window(self):
         print("Not implemented")
-
 
     def update_files_listing(self, folder_path):
         self.current_folder_path = folder_path
