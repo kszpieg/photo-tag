@@ -20,6 +20,19 @@ def optimize_bitmap_person(bitmap):
     return bitmap
 
 
+def optimize_cv_image(image):
+    h, w = image.shape[:2]
+    if w > 700:
+        calculated_height = int((h * 700) / w)
+        resized_img = cv2.resize(image, (700, calculated_height))
+        image = resized_img
+    if h > 700:
+        calculated_width = int((w * 700) / h)
+        resized_img = cv2.resize(image, (calculated_width, 700))
+        image = resized_img
+    return image
+
+
 class AppPanel(wx.Panel):
     def __init__(self, parent):
         super().__init__(parent)
@@ -62,7 +75,6 @@ class AppPanel(wx.Panel):
             label, sizer, handler = data
             self.btn_builder(label, sizer, handler)
         right_sizer.Add(btn_image_sizer, 0, wx.CENTER)
-
 
         main_sizer.Add(left_sizer, wx.ALIGN_LEFT, 5)
         main_sizer.Add(right_sizer, wx.ALIGN_RIGHT, 5)
@@ -109,7 +121,11 @@ class AppPanel(wx.Panel):
         self.image_label.SetLabelText(self.file_names[self.selection])
 
     def tag_persons(self, event):
-        print("Not implemented")
+        window_name = "Make tag on the photo"
+        photo = self.row_obj_dict[self.selection]
+        optimized_photo = optimize_cv_image(photo)
+        cv2.namedWindow(window_name)
+        cv2.imshow(window_name, optimized_photo)
 
     def save_tags_on_the_photo(self, event):
         print("Not implemented")
