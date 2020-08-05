@@ -56,6 +56,7 @@ class AppPanel(wx.Panel):
         self.tags_data = {}
         self.tag_number = 0
         self.all_tags_data = {}
+        self.slider_value = 5
 
         pub.subscribe(self.tag_details_listener, "tag_details_listener")
 
@@ -89,6 +90,15 @@ class AppPanel(wx.Panel):
             self.btn_builder(label, sizer, handler)
         right_sizer.Add(btn_image_sizer, 0, wx.CENTER)
 
+        msg_photo_rate = "Photo\'s rate:"
+        photo_rate_text = wx.StaticText(self, label=msg_photo_rate)
+
+        self.photo_slider = wx.Slider(self, value=self.slider_value, minValue=0, maxValue=10, size=(350, 50),
+                                      style=wx.SL_HORIZONTAL | wx.SL_LABELS)
+        self.photo_slider.Bind(wx.EVT_SLIDER, self.on_photo_slider_scroll)
+        right_sizer.Add(photo_rate_text, 0, wx.CENTER, border=15)
+        right_sizer.Add(self.photo_slider, 0, wx.CENTER, border=20)
+
         main_sizer.Add(left_sizer, wx.ALIGN_LEFT, 5)
         main_sizer.Add(right_sizer, wx.ALIGN_RIGHT, 5)
         self.SetSizer(main_sizer)
@@ -97,6 +107,12 @@ class AppPanel(wx.Panel):
         btn = wx.Button(self, label=label)
         btn.Bind(wx.EVT_BUTTON, handler)
         sizer.Add(btn, 0, wx.ALL | wx.CENTER, 5)
+
+    def on_photo_slider_scroll(self, event):
+        obj = event.GetEventObject()
+        self.slider_value = obj.GetValue()
+        font = self.GetFont()
+        font.SetPointSize(self.photo_slider.GetValue())
 
     def select_photo(self, event):
         self.selection = self.list_ctrl.GetFocusedItem()
@@ -183,13 +199,14 @@ class AppPanel(wx.Panel):
     def save_tags_on_the_photo(self, event):
         photo_data = {
             self.file_names[self.selection]: {
-                "photo_rate": 0,
+                "photo_rate": self.slider_value
             }
         }
         photo_data[self.file_names[self.selection]].update(self.tags_data)
         self.all_tags_data.update(photo_data)
         self.tags_data.clear()
         self.tag_number = 0
+        self.slider_value = 5
         json_string = json.dumps(self.all_tags_data)
         print(json_string)
 
