@@ -3,6 +3,7 @@ import wx
 import glob
 import os
 import time
+import json
 from pathlib import Path
 from crop_objects import crop_objects
 from image_converter import wxBitmapFromCvImage
@@ -48,6 +49,8 @@ class AppPanel(wx.Panel):
         self.label_photo = ""
         self.ix = -1
         self.iy = -1
+        self.iw = -1
+        self.ih = -1
         self.drawing = False
         self.window_closed = True
 
@@ -147,6 +150,8 @@ class AppPanel(wx.Panel):
         elif event == cv2.EVENT_LBUTTONUP:
             self.drawing = False
             cv2.rectangle(img, pt1=(self.ix, self.iy), pt2=(x, y), color=(0, 255, 255), thickness=2)
+            self.iw = x - self.ix
+            self.ih = y - self.iy
             cv2.imshow(window_name, img)
             if self.window_closed:
                 self.window_closed = False
@@ -156,6 +161,20 @@ class AppPanel(wx.Panel):
     def tag_details_listener(self, label, rate):
         print(f"Name label: {label}")
         print(f"Name rate: {rate}")
+        data = {
+            self.file_names[self.selection]: {
+                "photo_rate": 0,
+                "tags": {
+                    "1": {
+                        "label": label,
+                        "rate": rate,
+                        "bbox": [self.ix, self.iy, self.iw, self.ih]
+                    }
+                }
+            }
+        }
+        json_string = json.dumps(data)
+        print(json_string)
         self.window_closed = True
 
     def save_tags_on_the_photo(self, event):
