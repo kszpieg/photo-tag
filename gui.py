@@ -238,37 +238,6 @@ class AppPanel(wx.Panel):
             index += 1
 
 
-class AppFrame(wx.Frame):
-    def __init__(self):
-        super(AppFrame, self).__init__(parent=None, title="Album Generator")
-        self.panel = AppPanel(self)
-        self.create_menu()
-        self.SetMinSize((1450, 750))
-        self.Maximize()
-        self.Show()
-
-    def create_menu(self):
-        menu_bar = wx.MenuBar()
-        file_menu = wx.Menu()
-        open_folder_menu_item = file_menu.Append(
-            wx.ID_ANY, 'Open folder', 'Open a folder with photos'
-        )
-        menu_bar.Append(file_menu, '&File')
-        self.Bind(
-            event=wx.EVT_MENU,
-            handler=self.on_open_folder,
-            source=open_folder_menu_item,
-        )
-        self.SetMenuBar(menu_bar)
-
-    def on_open_folder(self, event):
-        title = "Choose a directory:"
-        dlg = wx.DirDialog(self, title, style=wx.DD_DEFAULT_STYLE)
-        if dlg.ShowModal() == wx.ID_OK:
-            self.panel.update_files_listing(dlg.GetPath())
-        dlg.Destroy()
-
-
 class TagDetailsFrame(wx.Frame):
     def __init__(self):
         wx.Frame.__init__(self, None, wx.ID_ANY, "Tag Details")
@@ -323,6 +292,37 @@ class TagDetailsFrame(wx.Frame):
         self.label = ""
         self.value = 5
         self.Close()
+
+
+class AppFrame(wx.Frame):
+    def __init__(self):
+        super(AppFrame, self).__init__(parent=None, title="Album Generator")
+        self.panel = AppPanel(self)
+        self.create_menu()
+        self.SetMinSize((1450, 750))
+        self.Maximize()
+        self.Show()
+
+    def create_menu(self):
+        menu_bar = wx.MenuBar()
+        file_menu = wx.Menu()
+        open_folder_menu_item = file_menu.Append(
+            wx.ID_ANY, 'Open folder', 'Open a folder with photos'
+        )
+        menu_bar.Append(file_menu, '&File')
+        self.Bind(
+            event=wx.EVT_MENU,
+            handler=self.on_open_folder,
+            source=open_folder_menu_item,
+        )
+        self.SetMenuBar(menu_bar)
+
+    def on_open_folder(self, event):
+        title = "Choose a directory:"
+        dlg = wx.DirDialog(self, title, style=wx.DD_DEFAULT_STYLE)
+        if dlg.ShowModal() == wx.ID_OK:
+            self.panel.update_files_listing(dlg.GetPath())
+        dlg.Destroy()
 
 
 if __name__ == '__main__':
