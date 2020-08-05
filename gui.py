@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import cv2
 import wx
 import glob
@@ -210,6 +212,10 @@ class AppPanel(wx.Panel):
         json_string = json.dumps(self.all_tags_data)
         print(json_string)
 
+    def save_data_to_json(self):
+        json_string = json.dumps(self.all_tags_data)
+        return json_string
+
     def open_generator_window(self):
         print("Not implemented")
 
@@ -315,6 +321,16 @@ class AppFrame(wx.Frame):
             handler=self.on_open_folder,
             source=open_folder_menu_item,
         )
+        json_menu = wx.Menu()
+        save_json_menu_item = json_menu.Append(
+            wx.ID_ANY, 'Save data to JSON', 'Save data with all tags to JSON file'
+        )
+        menu_bar.Append(json_menu, '&JSON')
+        self.Bind(
+            event=wx.EVT_MENU,
+            handler=self.on_save_json,
+            source=save_json_menu_item
+        )
         self.SetMenuBar(menu_bar)
 
     def on_open_folder(self, event):
@@ -323,6 +339,12 @@ class AppFrame(wx.Frame):
         if dlg.ShowModal() == wx.ID_OK:
             self.panel.update_files_listing(dlg.GetPath())
         dlg.Destroy()
+
+    def on_save_json(self, event):
+        json_string = self.panel.save_data_to_json()
+        file_name = datetime.now().strftime("%Y-%m-%d_%I-%M-%S_%p")
+        with open(file_name + ".json", "w") as data_file:
+            json.dump(json_string, data_file, indent=2)
 
 
 if __name__ == '__main__':
