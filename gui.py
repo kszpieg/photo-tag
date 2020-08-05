@@ -53,6 +53,9 @@ class AppPanel(wx.Panel):
         self.ih = -1
         self.drawing = False
         self.window_closed = True
+        self.tags_data = {}
+        self.tag_number = 0
+        self.all_tags_data = {}
 
         pub.subscribe(self.tag_details_listener, "tag_details_listener")
 
@@ -159,26 +162,36 @@ class AppPanel(wx.Panel):
                 second_window.Show()
 
     def tag_details_listener(self, label, rate):
-        print(f"Name label: {label}")
-        print(f"Name rate: {rate}")
-        data = {
-            self.file_names[self.selection]: {
-                "photo_rate": 0,
+        if self.tag_number == 0:
+            self.tags_data = {
                 "tags": {
-                    "1": {
+                    self.tag_number: {
                         "label": label,
                         "rate": rate,
                         "bbox": [self.ix, self.iy, self.iw, self.ih]
                     }
                 }
             }
-        }
-        json_string = json.dumps(data)
+        else:
+            self.tags_data["tags"].update(
+                {self.tag_number: {"label": label, "rate": rate, "bbox": [self.ix, self.iy, self.iw, self.ih]}})
+        self.tag_number += 1
+        json_string = json.dumps(self.tags_data)
         print(json_string)
         self.window_closed = True
 
     def save_tags_on_the_photo(self, event):
-        print("Not implemented")
+        photo_data = {
+            self.file_names[self.selection]: {
+                "photo_rate": 0,
+            }
+        }
+        photo_data[self.file_names[self.selection]].update(self.tags_data)
+        self.all_tags_data.update(photo_data)
+        self.tags_data.clear()
+        self.tag_number = 0
+        json_string = json.dumps(self.all_tags_data)
+        print(json_string)
 
     def open_generator_window(self):
         print("Not implemented")
