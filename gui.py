@@ -209,11 +209,11 @@ class AppPanel(wx.Panel):
         self.tags_data.clear()
         self.tag_number = 0
         self.slider_value = 5
-        json_string = json.dumps(self.all_tags_data)
+        json_string = json.dumps(self.all_tags_data, indent=2, separators=(',', ': '))
         print(json_string)
 
     def save_data_to_json(self):
-        json_string = json.dumps(self.all_tags_data)
+        json_string = json.dumps(self.all_tags_data, indent=2, separators=(',', ': '))
         return json_string
 
     def open_generator_window(self):
@@ -344,7 +344,7 @@ class AppFrame(wx.Frame):
         json_string = self.panel.save_data_to_json()
         file_name = datetime.now().strftime("%Y-%m-%d_%I-%M-%S_%p")
         with open(file_name + ".json", "w") as data_file:
-            json.dump(json_string, data_file, indent=2)
+            data_file.write(json_string + '\n')
 
 
 if __name__ == '__main__':
