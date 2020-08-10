@@ -78,6 +78,13 @@ class AppPanel(wx.Panel):
             label, sizer, handler = data
             self.btn_builder(label, sizer, handler)
         left_sizer.Add(btn_main_sizer, 0, wx.CENTER)
+        self.list_ctrl_tags = wx.ListCtrl(
+            self, size=(650, 150),
+            style=wx.LC_REPORT | wx.BORDER_SUNKEN
+        )
+        self.list_ctrl_tags.InsertColumn(0, "Tag\'s name", width=280)
+        self.list_ctrl_tags.InsertColumn(1, "Tag\'s rate", width=100)
+        left_sizer.Add(self.list_ctrl_tags, 0, wx.ALL | wx.EXPAND, 5)
 
         bmp_image = wx.Image(wx.EXPAND, wx.EXPAND)
         self.image_ctrl = wx.StaticBitmap(self, wx.ID_ANY, wx.Bitmap(bmp_image))
@@ -145,6 +152,22 @@ class AppPanel(wx.Panel):
             self.row_obj_dict[index] = photo_object
             index += 1
 
+    def update_tags_listing(self, file_name):
+        self.list_ctrl_tags.ClearAll()
+        self.list_ctrl_tags.InsertColumn(0, "Tag\'s name", width=280)
+        self.list_ctrl_tags.InsertColumn(1, "Tag\'s rate", width=100)
+        if file_name in self.all_tags_data:
+            for tag in self.all_tags_data[file_name]['tags'].items():
+                self.list_ctrl_tags.InsertItem(int(tag[0]), tag[1]['label'])
+                self.list_ctrl_tags.SetItem(int(tag[0]), 1, str(tag[1]['rate']))
+
+    def load_photo(self, photo):
+        converted_image = wxBitmapFromCvImage(photo)
+        bitmap = optimize_bitmap_person(wx.Bitmap(converted_image))
+        self.image_ctrl.SetBitmap(bitmap)
+        self.image_label.SetLabelText(self.file_names[self.selection])
+        self.update_tags_listing(self.file_names[self.selection])
+
     def load_json_file(self, file_path):
         self.current_file_path = file_path
         try:
@@ -156,16 +179,24 @@ class AppPanel(wx.Panel):
                     self.all_tags_data = json.load(file)
         except IOError:
             wx.LogError("Cannot open the file.")
+        self.color_file_names_after_loading_photos()
         print(self.all_tags_data)
+
+    def color_file_names_after_loading_photos(self):
+        if self.list_ctrl:
+            for file_name in self.all_tags_data:
+                if file_name in self.all_tags_data:
+                    index = 0
+                    for item in self.file_names:
+                        if item == file_name:
+                            break
+                        index += 1
+                    self.list_ctrl.SetItemTextColour(index, wx.Colour(0, 255, 0))
 
     def select_photo(self, event):
         self.selection = self.list_ctrl.GetFocusedItem()
         if self.selection >= 0:
-            photo = self.row_obj_dict[self.selection]
-            converted_image = wxBitmapFromCvImage(photo)
-            bitmap = optimize_bitmap_person(wx.Bitmap(converted_image))
-            self.image_ctrl.SetBitmap(bitmap)
-            self.image_label.SetLabelText(self.file_names[self.selection])
+            self.load_photo(self.row_obj_dict[self.selection])
             self.Refresh()
             self.Layout()
 
@@ -180,22 +211,14 @@ class AppPanel(wx.Panel):
             self.selection = len(self.row_obj_dict) - 1
         else:
             self.selection -= 1
-        photo = self.row_obj_dict[self.selection]
-        converted_image = wxBitmapFromCvImage(photo)
-        bitmap = optimize_bitmap_person(wx.Bitmap(converted_image))
-        self.image_ctrl.SetBitmap(bitmap)
-        self.image_label.SetLabelText(self.file_names[self.selection])
+        self.load_photo(self.row_obj_dict[self.selection])
 
     def next_image(self, event):
         if self.selection == (len(self.row_obj_dict) - 1):
             self.selection = 0
         else:
             self.selection += 1
-        photo = self.row_obj_dict[self.selection]
-        converted_image = wxBitmapFromCvImage(photo)
-        bitmap = optimize_bitmap_person(wx.Bitmap(converted_image))
-        self.image_ctrl.SetBitmap(bitmap)
-        self.image_label.SetLabelText(self.file_names[self.selection])
+        self.load_photo(self.row_obj_dict[self.selection])
 
     def tag_persons(self, event):
         window_name = "Make tag on the photo"
