@@ -70,6 +70,7 @@ class AppPanel(wx.Panel):
         self.list_ctrl.InsertColumn(1, "File extension", width=100)
         left_sizer.Add(self.list_ctrl, 0, wx.ALL | wx.EXPAND, 5)
         btn_data = [("Select image", btn_main_sizer, self.select_photo),
+                    ("List of tags", btn_main_sizer, self.tags_list),
                     ("Generate album", btn_main_sizer, self.open_generator_window)]
         for data in btn_data:
             label, sizer, handler = data
@@ -128,6 +129,9 @@ class AppPanel(wx.Panel):
             self.image_label.SetLabelText(self.file_names[self.selection])
             self.Refresh()
             self.Layout()
+
+    def tags_list(self, event):
+        print("Not Implemented")
 
     def previous_image(self, event):
         if self.selection == 0:
