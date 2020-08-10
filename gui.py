@@ -141,6 +141,19 @@ class AppPanel(wx.Panel):
             self.row_obj_dict[index] = photo_object
             index += 1
 
+    def load_json_file(self, file_path):
+        self.current_file_path = file_path
+        try:
+            with open(file_path, 'r') as file:
+                if not self.all_tags_data:
+                    self.all_tags_data = json.load(file)
+                else:
+                    self.all_tags_data.clear()
+                    self.all_tags_data = json.load(file)
+        except IOError:
+            wx.LogError("Cannot open the file.")
+        print(self.all_tags_data)
+
     def select_photo(self, event):
         self.selection = self.list_ctrl.GetFocusedItem()
         if self.selection >= 0:
@@ -325,13 +338,21 @@ class AppFrame(wx.Frame):
         )
         json_menu = wx.Menu()
         save_json_menu_item = json_menu.Append(
-            wx.ID_ANY, 'Save data to JSON', 'Save data with all tags to JSON file'
+            wx.ID_ANY, 'Save data to JSON', 'Save data with all tags to JSON file',
+        )
+        load_data_from_json_menu_item = json_menu.Append(
+            wx.ID_ANY, 'Load data from JSON', 'Load data with all tags from JSON file'
         )
         menu_bar.Append(json_menu, '&JSON')
         self.Bind(
             event=wx.EVT_MENU,
             handler=self.on_save_json,
             source=save_json_menu_item
+        )
+        self.Bind(
+            event=wx.EVT_MENU,
+            handler=self.on_load_from_json,
+            source=load_data_from_json_menu_item
         )
         self.SetMenuBar(menu_bar)
 
@@ -347,6 +368,15 @@ class AppFrame(wx.Frame):
         file_name = datetime.now().strftime("%Y-%m-%d_%I-%M-%S_%p")
         with open(file_name + ".json", "w") as data_file:
             data_file.write(json_string + '\n')
+
+    def on_load_from_json(self, event):
+        title = "Choose a JSON file:"
+        dlg = wx.FileDialog(self, title, style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST)
+        if dlg.ShowModal() == wx.ID_OK:
+            self.panel.load_json_file(dlg.GetPath())
+        elif dlg.ShowModal() == wx.ID_CANCEL:
+            dlg.Destroy()
+        dlg.Destroy()
 
 
 if __name__ == '__main__':
