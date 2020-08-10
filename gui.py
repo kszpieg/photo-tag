@@ -45,6 +45,8 @@ class AppPanel(wx.Panel):
         btn_main_sizer = wx.BoxSizer(wx.HORIZONTAL)
         btn_image_sizer = wx.BoxSizer(wx.HORIZONTAL)
         right_sizer = wx.BoxSizer(wx.VERTICAL)
+        self.current_folder_path = ""
+        self.current_file_path = ""
         self.row_obj_dict = {}
         self.file_names = []
         self.selection = 0
