@@ -136,6 +136,8 @@ class AppPanel(wx.Panel):
             photo_object = cv2.imread(photo)
             self.list_ctrl.InsertItem(index, Path(photo).stem)
             self.file_names.append(Path(photo).stem + Path(photo).suffix)
+            if self.file_names[index] in self.all_tags_data:
+                self.list_ctrl.SetItemTextColour(index, wx.Colour(0, 255, 0))
             self.list_ctrl.SetItem(index, 1, str(time.strftime('%d/%m/%Y', time.gmtime(os.path.getmtime(photo)))))
             self.list_ctrl.SetItem(index, 2, Path(photo).suffix)
             self.list_ctrl.SetItem(index, 3, str(os.path.getsize(photo)) + " B")
@@ -250,9 +252,13 @@ class AppPanel(wx.Panel):
         }
         photo_data[self.file_names[self.selection]].update(self.tags_data)
         self.all_tags_data.update(photo_data)
+        self.list_ctrl.SetItemTextColour(self.selection, wx.Colour(0, 255, 0))
         self.tags_data.clear()
         self.tag_number = 0
         self.slider_value = 5
+        self.list_ctrl.Select
+        self.Refresh()
+        self.Layout()
         json_string = json.dumps(self.all_tags_data, indent=2, separators=(',', ': '))
         print(json_string)
 
