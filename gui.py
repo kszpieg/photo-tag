@@ -70,7 +70,7 @@ class AppPanel(wx.Panel):
         self.list_ctrl.InsertColumn(1, "File extension", width=100)
         left_sizer.Add(self.list_ctrl, 0, wx.ALL | wx.EXPAND, 5)
         btn_data = [("Select image", btn_main_sizer, self.select_photo),
-                    ("List of tags", btn_main_sizer, self.tags_list),
+                    ("List of tags", btn_main_sizer, self.list_of_tags),
                     ("Generate album", btn_main_sizer, self.open_generator_window)]
         for data in btn_data:
             label, sizer, handler = data
@@ -117,12 +117,34 @@ class AppPanel(wx.Panel):
         font = self.GetFont()
         font.SetPointSize(self.photo_slider.GetValue())
 
+    def update_files_listing(self, folder_path):
+        self.current_folder_path = folder_path
+        self.list_ctrl.ClearAll()
+        self.file_names.clear()
+
+        self.list_ctrl.InsertColumn(0, "File name", width=250)
+        self.list_ctrl.InsertColumn(1, "Date", width=150)
+        self.list_ctrl.InsertColumn(2, "File extension", width=100)
+        self.list_ctrl.InsertColumn(3, "Size", width=100)
+
+        photos = glob.glob(folder_path + "/*.jpg")
+        photo_objects = []
+        index = 0
+        for photo in photos:
+            photo_object = cv2.imread(photo)
+            self.list_ctrl.InsertItem(index, Path(photo).stem)
+            self.file_names.append(Path(photo).stem + Path(photo).suffix)
+            self.list_ctrl.SetItem(index, 1, str(time.strftime('%d/%m/%Y', time.gmtime(os.path.getmtime(photo)))))
+            self.list_ctrl.SetItem(index, 2, Path(photo).suffix)
+            self.list_ctrl.SetItem(index, 3, str(os.path.getsize(photo)) + " B")
+            photo_objects.append(photo_object)
+            self.row_obj_dict[index] = photo_object
+            index += 1
+
     def select_photo(self, event):
         self.selection = self.list_ctrl.GetFocusedItem()
         if self.selection >= 0:
             photo = self.row_obj_dict[self.selection]
-            # result_image, detected_objects = recognize_persons(photo)
-            # self.list_of_images = crop_objects(photo, detected_objects)
             converted_image = wxBitmapFromCvImage(photo)
             bitmap = optimize_bitmap_person(wx.Bitmap(converted_image))
             self.image_ctrl.SetBitmap(bitmap)
@@ -130,8 +152,11 @@ class AppPanel(wx.Panel):
             self.Refresh()
             self.Layout()
 
-    def tags_list(self, event):
+    def list_of_tags(self, event):
         print("Not Implemented")
+
+    def open_generator_window(self):
+        print("Not implemented")
 
     def previous_image(self, event):
         if self.selection == 0:
@@ -219,33 +244,6 @@ class AppPanel(wx.Panel):
     def save_data_to_json(self):
         json_string = json.dumps(self.all_tags_data, indent=2, separators=(',', ': '))
         return json_string
-
-    def open_generator_window(self):
-        print("Not implemented")
-
-    def update_files_listing(self, folder_path):
-        self.current_folder_path = folder_path
-        self.list_ctrl.ClearAll()
-        self.file_names.clear()
-
-        self.list_ctrl.InsertColumn(0, "File name", width=250)
-        self.list_ctrl.InsertColumn(1, "Date", width=150)
-        self.list_ctrl.InsertColumn(2, "File extension", width=100)
-        self.list_ctrl.InsertColumn(3, "Size", width=100)
-
-        photos = glob.glob(folder_path + "/*.jpg")
-        photo_objects = []
-        index = 0
-        for photo in photos:
-            photo_object = cv2.imread(photo)
-            self.list_ctrl.InsertItem(index, Path(photo).stem)
-            self.file_names.append(Path(photo).stem + Path(photo).suffix)
-            self.list_ctrl.SetItem(index, 1, str(time.strftime('%d/%m/%Y', time.gmtime(os.path.getmtime(photo)))))
-            self.list_ctrl.SetItem(index, 2, Path(photo).suffix)
-            self.list_ctrl.SetItem(index, 3, str(os.path.getsize(photo)) + " B")
-            photo_objects.append(photo_object)
-            self.row_obj_dict[index] = photo_object
-            index += 1
 
 
 class TagDetailsFrame(wx.Frame):
