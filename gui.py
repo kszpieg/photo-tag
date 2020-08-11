@@ -402,12 +402,13 @@ class AppFrame(wx.Frame):
 
     def on_load_from_json(self, event):
         title = "Choose a JSON file:"
-        dlg = wx.FileDialog(self, title, style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST)
+        dlg = wx.FileDialog(self, title, style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST,
+                            wildcard="JSON files (*.json)|*.json")
         if dlg.ShowModal() == wx.ID_OK:
             self.panel.load_json_file(dlg.GetPath())
-        elif dlg.ShowModal() == wx.ID_CANCEL:
             dlg.Destroy()
-        dlg.Destroy()
+        elif dlg.ShowModal() == wx.ID_CANCEL:
+            return
 
 
 if __name__ == '__main__':
