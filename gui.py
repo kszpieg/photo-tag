@@ -1,6 +1,7 @@
 from datetime import datetime
 
 import cv2
+import numpy as np
 import wx
 import glob
 import os
@@ -44,6 +45,7 @@ class AppPanel(wx.Panel):
         left_sizer = wx.BoxSizer(wx.VERTICAL)
         btn_main_sizer = wx.BoxSizer(wx.HORIZONTAL)
         btn_image_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        btn_tags_sizer = wx.BoxSizer(wx.HORIZONTAL)
         right_sizer = wx.BoxSizer(wx.VERTICAL)
         self.current_folder_path = ""
         self.current_file_path = ""
@@ -56,7 +58,7 @@ class AppPanel(wx.Panel):
         self.iw = -1
         self.ih = -1
         self.drawing = False
-        self.window_closed = True
+        self.second_window_closed = True
         self.tags_data = {}
         self.tag_number = 0
         self.all_tags_data = {}
@@ -85,6 +87,11 @@ class AppPanel(wx.Panel):
         self.list_ctrl_tags.InsertColumn(0, "Tag\'s name", width=280)
         self.list_ctrl_tags.InsertColumn(1, "Tag\'s rate", width=100)
         left_sizer.Add(self.list_ctrl_tags, 0, wx.ALL | wx.EXPAND, 5)
+        btn_data_tags = [("All tags list", btn_tags_sizer, self.all_tags_window)]
+        for data in btn_data_tags:
+            label, sizer, handler = data
+            self.btn_builder(label, sizer, handler)
+        left_sizer.Add(btn_tags_sizer, 0, wx.CENTER)
 
         bmp_image = wx.Image(wx.EXPAND, wx.EXPAND)
         self.image_ctrl = wx.StaticBitmap(self, wx.ID_ANY, wx.Bitmap(bmp_image))
@@ -206,6 +213,11 @@ class AppPanel(wx.Panel):
     def open_generator_window(self):
         print("Not implemented")
 
+    def all_tags_window(self, event):
+        self.second_window_closed = False
+        second_window = TagsListFrame()
+        second_window.Show()
+
     def previous_image(self, event):
         if self.selection == 0:
             self.selection = len(self.row_obj_dict) - 1
@@ -233,20 +245,22 @@ class AppPanel(wx.Panel):
         window_name = param[0]
         img = param[1]
         if event == cv2.EVENT_LBUTTONDOWN:
-            self.drawing = True
-            self.ix = x
-            self.iy = y
+            if self.second_window_closed:
+                self.drawing = True
+                self.ix = x
+                self.iy = y
 
         elif event == cv2.EVENT_LBUTTONUP:
-            self.drawing = False
-            cv2.rectangle(img, pt1=(self.ix, self.iy), pt2=(x, y), color=(0, 255, 255), thickness=2)
-            self.iw = x - self.ix
-            self.ih = y - self.iy
-            cv2.imshow(window_name, img)
-            if self.window_closed:
-                self.window_closed = False
-                second_window = TagDetailsFrame()
-                second_window.Show()
+            if self.drawing:
+                self.drawing = False
+                cv2.rectangle(img, pt1=(self.ix, self.iy), pt2=(x, y), color=(0, 255, 255), thickness=2)
+                self.iw = x - self.ix
+                self.ih = y - self.iy
+                cv2.imshow(window_name, img)
+                if self.second_window_closed:
+                    self.second_window_closed = False
+                    second_window = TagDetailsFrame()
+                    second_window.Show()
 
     def tag_details_listener(self, label, rate):
         if self.tag_number == 0:
@@ -265,7 +279,7 @@ class AppPanel(wx.Panel):
         self.tag_number += 1
         json_string = json.dumps(self.tags_data)
         print(json_string)
-        self.window_closed = True
+        self.second_window_closed = True
 
     def save_tags_on_the_photo(self, event):
         photo_data = {
@@ -279,7 +293,6 @@ class AppPanel(wx.Panel):
         self.tags_data.clear()
         self.tag_number = 0
         self.slider_value = 5
-        self.list_ctrl.Select
         self.Refresh()
         self.Layout()
         json_string = json.dumps(self.all_tags_data, indent=2, separators=(',', ': '))
@@ -344,6 +357,22 @@ class TagDetailsFrame(wx.Frame):
         self.label = ""
         self.value = 5
         self.Close()
+
+
+class TagsListFrame(wx.Frame):
+    def __init__(self):
+        wx.Frame.__init__(self, None, wx.ID_ANY, "All tags list")
+        panel = wx.Panel(self)
+        self.SetMinSize((500, 320))
+
+        main_sizer = wx.BoxSizer(wx.VERTICAL)
+
+        msg_label = "Sample text"
+        label_text = wx.StaticText(panel, label=msg_label)
+
+        main_sizer.Add(label_text, 0, wx.TOP | wx.CENTER, border=15)
+
+        panel.SetSizer(main_sizer)
 
 
 class AppFrame(wx.Frame):
