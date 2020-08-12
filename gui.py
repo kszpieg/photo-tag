@@ -53,6 +53,7 @@ class AppPanel(wx.Panel):
         self.file_names = []
         self.selection = 0
         self.label_photo = ""
+        self.created_tags_count = 0
         self.ix = -1
         self.iy = -1
         self.iw = -1
@@ -67,6 +68,7 @@ class AppPanel(wx.Panel):
                              "1": {"label": "test2"}}
 
         pub.subscribe(self.tag_details_listener, "tag_details_listener")
+        pub.subscribe(self.close_tag_details_window, "close_tag_details_window")
 
         self.list_ctrl = wx.ListCtrl(
             self, size=(650, 150),
@@ -78,7 +80,6 @@ class AppPanel(wx.Panel):
         self.list_ctrl.InsertColumn(3, "Size", width=100)
         left_sizer.Add(self.list_ctrl, 0, wx.ALL | wx.EXPAND, 5)
         btn_data = [("Select image", btn_main_sizer, self.select_photo),
-                    ("List of tags", btn_main_sizer, self.list_of_tags),
                     ("Generate album", btn_main_sizer, self.open_generator_window)]
         for data in btn_data:
             label, sizer, handler = data
@@ -103,6 +104,9 @@ class AppPanel(wx.Panel):
 
         self.image_label = wx.StaticText(self, label="")
         right_sizer.Add(self.image_label, 0, wx.ALL | wx.CENTER, 5)
+
+        self.created_tags_info_label = wx.StaticText(self, label="")
+        right_sizer.Add(self.created_tags_info_label, 0, wx.ALL | wx.CENTER, 5)
 
         btn_data_under_photo = [("Previous image", btn_image_sizer, self.previous_image),
                                 ("Make tag", btn_image_sizer, self.tag_persons),
@@ -172,6 +176,7 @@ class AppPanel(wx.Panel):
         bitmap = optimize_bitmap_person(wx.Bitmap(converted_image))
         self.image_ctrl.SetBitmap(bitmap)
         self.image_label.SetLabelText(self.file_names[self.selection])
+        self.created_tags_info_label.SetLabelText("Created tags waiting for save: " + str(self.created_tags_count))
         self.update_tags_listing(self.file_names[self.selection])
 
     def load_json_file(self, file_path):
@@ -205,9 +210,6 @@ class AppPanel(wx.Panel):
             self.load_photo(self.row_obj_dict[self.selection])
             self.Refresh()
             self.Layout()
-
-    def list_of_tags(self, event):
-        print("Not Implemented")
 
     def open_generator_window(self):
         print("Not implemented")
@@ -260,6 +262,7 @@ class AppPanel(wx.Panel):
                 if self.second_window_closed:
                     self.second_window_closed = False
                     second_window = TagDetailsFrame()
+                    pub.sendMessage("get_objects_dict", objects_dict=self.objects_dict)
                     second_window.Show()
 
     def tag_details_listener(self, label, rate):
@@ -279,7 +282,14 @@ class AppPanel(wx.Panel):
         self.tag_number += 1
         json_string = json.dumps(self.tags_data)
         print(json_string)
+        cv2.destroyAllWindows()
+        self.created_tags_count += 1
+        self.created_tags_info_label.SetLabelText("Created tags waiting for save: " + str(self.created_tags_count))
         self.second_window_closed = True
+
+    def close_tag_details_window(self, window_closed):
+        self.second_window_closed = window_closed
+        cv2.destroyAllWindows()
 
     def save_tags_on_the_photo(self, event):
         photo_data = {
@@ -293,6 +303,8 @@ class AppPanel(wx.Panel):
         self.tags_data.clear()
         self.tag_number = 0
         self.slider_value = 5
+        self.created_tags_count = 0
+        self.created_tags_info_label.SetLabelText("Created tags waiting for save: " + str(self.created_tags_count))
         self.Refresh()
         self.Layout()
         json_string = json.dumps(self.all_tags_data, indent=2, separators=(',', ': '))
@@ -305,46 +317,62 @@ class AppPanel(wx.Panel):
 
 class TagDetailsFrame(wx.Frame):
     def __init__(self):
-        wx.Frame.__init__(self, None, wx.ID_ANY, "Tag Details")
-        panel = wx.Panel(self)
-        self.SetMinSize((500, 320))
+        wx.Frame.__init__(self, None, wx.ID_ANY, "Tag Details", size=(600, 320))
+        self.panel = wx.Panel(self)
         self.value = 5
         self.label = ""
+        self.objects_list = {}
+        self.second_window_closed = True
+
+        pub.subscribe(self.get_objects_dict, "get_objects_dict")
 
         main_sizer = wx.BoxSizer(wx.VERTICAL)
+        btn_sizer = wx.BoxSizer(wx.HORIZONTAL)
 
-        msg_label = "Tag\'s label:"
-        label_text = wx.StaticText(panel, label=msg_label)
+        msg_label = "Object on tag:"
+        label_text = wx.StaticText(self.panel, label=msg_label)
 
-        label_ctrl = wx.TextCtrl(panel)
-        label_ctrl.Bind(wx.EVT_TEXT, self.text_typed)
+        self.object_list_choice = wx.Choice(self.panel, 0, choices=[], size=(300, 50))
 
         msg_rate = "Tag\'s rate:"
-        rate_text = wx.StaticText(panel, label=msg_rate)
+        rate_text = wx.StaticText(self.panel, label=msg_rate)
 
-        self.slider = wx.Slider(panel, value=self.value, minValue=0, maxValue=10, style=wx.SL_HORIZONTAL | wx.SL_LABELS)
+        self.slider = wx.Slider(self.panel, value=self.value, minValue=0, maxValue=10, size=(350, 50),
+                                style=wx.SL_HORIZONTAL | wx.SL_LABELS)
         self.slider.Bind(wx.EVT_SLIDER, self.on_slider_scroll)
 
-        checkbox_eyes = wx.CheckBox(panel, label="Person's eyes are closed")
-        checkbox_blurred = wx.CheckBox(panel, label="Person is blurred")
-        checkbox_others = wx.CheckBox(panel, label="Others defects (red eyes, look not at the camera, etc.)")
+        checkbox_eyes = wx.CheckBox(self.panel, label="Person's eyes are closed")
+        checkbox_blurred = wx.CheckBox(self.panel, label="Person is blurred")
+        checkbox_others = wx.CheckBox(self.panel, label="Others defects (red eyes, look not at the camera, etc.)")
 
-        close_btn = wx.Button(panel, label="Save tag and close")
-        close_btn.Bind(wx.EVT_BUTTON, self.on_save_and_close)
+        btn_data = [("Save tag and close", btn_sizer, self.on_save_and_close),
+                    ("Close", btn_sizer, self.close_window)]
+        for data in btn_data:
+            label, sizer, handler = data
+            self.btn_builder(label, sizer, handler)
 
         main_sizer.Add(label_text, 0, wx.TOP | wx.CENTER, border=15)
-        main_sizer.Add(label_ctrl, 0, wx.EXPAND | wx.CENTER, border=15)
+        main_sizer.Add(self.object_list_choice, 0, wx.CENTER, border=15)
         main_sizer.Add(rate_text, 0, wx.TOP | wx.CENTER, border=15)
         main_sizer.Add(self.slider, 0, wx.EXPAND | wx.TOP, border=20)
         main_sizer.Add(checkbox_eyes, 0, wx.EXPAND | wx.CENTER, border=15)
         main_sizer.Add(checkbox_blurred, 0, wx.EXPAND | wx.CENTER, border=15)
         main_sizer.Add(checkbox_others, 0, wx.EXPAND | wx.CENTER, border=15)
-        main_sizer.Add(close_btn, 0, wx.CENTER | wx.BOTTOM, border=10)
+        main_sizer.Add(btn_sizer, 0, wx.CENTER | wx.BOTTOM, border=10)
 
-        panel.SetSizer(main_sizer)
+        self.panel.SetSizer(main_sizer)
 
-    def text_typed(self, event):
-        self.label = event.GetString()
+    def btn_builder(self, label, sizer, handler):
+        btn = wx.Button(self.panel, label=label)
+        btn.Bind(wx.EVT_BUTTON, handler)
+        sizer.Add(btn, 0, wx.ALL | wx.CENTER, 5)
+
+    def get_objects_dict(self, objects_dict):
+        self.objects_list = objects_dict
+        for obj in self.objects_list.items():
+            string = obj[0] + ". " + obj[1]['label']
+            self.object_list_choice.Append(string)
+        self.object_list_choice.SetSelection(0)
 
     def on_slider_scroll(self, event):
         obj = event.GetEventObject()
@@ -353,9 +381,15 @@ class TagDetailsFrame(wx.Frame):
         font.SetPointSize(self.slider.GetValue())
 
     def on_save_and_close(self, event):
+        selection = self.object_list_choice.GetSelection()
+        self.label = self.objects_list[str(selection)]['label']
         pub.sendMessage("tag_details_listener", label=self.label, rate=self.value)
         self.label = ""
         self.value = 5
+        self.Close()
+
+    def close_window(self, event):
+        pub.sendMessage("close_tag_details_window", window_closed=True)
         self.Close()
 
 
