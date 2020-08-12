@@ -403,9 +403,11 @@ class ObjectsListFrame(wx.Frame):
 
     def update_object_list(self):
         self.list_ctrl_objects_list.DeleteAllItems()
+        index = 0
         for obj in self.objects_list.items():
-            self.list_ctrl_objects_list.InsertItem(int(obj[0]), obj[0])
-            self.list_ctrl_objects_list.SetItem(int(obj[0]), 1, obj[1]['label'])
+            self.list_ctrl_objects_list.InsertItem(index, obj[0])
+            self.list_ctrl_objects_list.SetItem(index, 1, obj[1]['label'])
+            index += 1
         self.list_ctrl_objects_list.Refresh()
 
     def update_object_list_after_open_window(self, object_dict):
@@ -424,7 +426,10 @@ class ObjectsListFrame(wx.Frame):
         second_window.Show()
 
     def delete_selected_object(self, event):
-        print("Not implemented")
+        selection = self.list_ctrl_objects_list.GetFocusedItem()
+        self.objects_list.pop(str(selection), None)
+        print(self.objects_list)
+        self.update_object_list()
 
     def show_object_photos(self, event):
         print("Not implemented")
