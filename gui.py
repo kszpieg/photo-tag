@@ -176,7 +176,7 @@ class AppPanel(wx.Panel):
         bitmap = optimize_bitmap_person(wx.Bitmap(converted_image))
         self.image_ctrl.SetBitmap(bitmap)
         self.image_label.SetLabelText(self.file_names[self.selection])
-        self.created_tags_info_label.SetLabelText("Created tags waiting for save: " + str(self.created_tags_count))
+        self.created_tags_info_label.SetLabelText("Created tags waiting for saving: " + str(self.created_tags_count))
         self.update_tags_listing(self.file_names[self.selection])
 
     def load_json_file(self, file_path):
@@ -284,7 +284,7 @@ class AppPanel(wx.Panel):
         print(json_string)
         cv2.destroyAllWindows()
         self.created_tags_count += 1
-        self.created_tags_info_label.SetLabelText("Created tags waiting for save: " + str(self.created_tags_count))
+        self.created_tags_info_label.SetLabelText("Created tags waiting for saving: " + str(self.created_tags_count))
         self.second_window_closed = True
 
     def close_tag_details_window(self, window_closed):
@@ -304,7 +304,7 @@ class AppPanel(wx.Panel):
         self.tag_number = 0
         self.slider_value = 5
         self.created_tags_count = 0
-        self.created_tags_info_label.SetLabelText("Created tags waiting for save: " + str(self.created_tags_count))
+        self.created_tags_info_label.SetLabelText("Created tags waiting for saving: " + str(self.created_tags_count))
         self.Refresh()
         self.Layout()
         json_string = json.dumps(self.all_tags_data, indent=2, separators=(',', ': '))
