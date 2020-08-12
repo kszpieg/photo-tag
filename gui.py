@@ -418,7 +418,7 @@ class ObjectsListFrame(wx.Frame):
 
     def add_new_object(self, event):
         self.second_window_closed = False
-        second_window = AddNewObject()
+        second_window = AddNewObjectFrame()
         last_id = int(list(self.objects_list.keys())[-1])
         pub.sendMessage("get_last_id", last_id=last_id)
         second_window.Show()
@@ -434,7 +434,7 @@ class ObjectsListFrame(wx.Frame):
         self.Close()
 
 
-class AddNewObject(wx.Frame):
+class AddNewObjectFrame(wx.Frame):
     def __init__(self):
         wx.Frame.__init__(self, None, wx.ID_ANY, "Add new object", style=wx.CAPTION, size=(400, 170))
         self.panel = wx.Panel(self)
