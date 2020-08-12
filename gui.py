@@ -45,7 +45,7 @@ class AppPanel(wx.Panel):
         left_sizer = wx.BoxSizer(wx.VERTICAL)
         btn_main_sizer = wx.BoxSizer(wx.HORIZONTAL)
         btn_image_sizer = wx.BoxSizer(wx.HORIZONTAL)
-        btn_tags_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        btn_objects_sizer = wx.BoxSizer(wx.HORIZONTAL)
         right_sizer = wx.BoxSizer(wx.VERTICAL)
         self.current_folder_path = ""
         self.current_file_path = ""
@@ -63,6 +63,7 @@ class AppPanel(wx.Panel):
         self.tag_number = 0
         self.all_tags_data = {}
         self.slider_value = 5
+        self.objects_dict = {"0": {"label": "test"}}
 
         pub.subscribe(self.tag_details_listener, "tag_details_listener")
 
@@ -70,8 +71,10 @@ class AppPanel(wx.Panel):
             self, size=(650, 150),
             style=wx.LC_REPORT | wx.BORDER_SUNKEN
         )
-        self.list_ctrl.InsertColumn(0, "File name", width=280)
-        self.list_ctrl.InsertColumn(1, "File extension", width=100)
+        self.list_ctrl.InsertColumn(0, "File name", width=250)
+        self.list_ctrl.InsertColumn(1, "Date", width=150)
+        self.list_ctrl.InsertColumn(2, "File extension", width=100)
+        self.list_ctrl.InsertColumn(3, "Size", width=100)
         left_sizer.Add(self.list_ctrl, 0, wx.ALL | wx.EXPAND, 5)
         btn_data = [("Select image", btn_main_sizer, self.select_photo),
                     ("List of tags", btn_main_sizer, self.list_of_tags),
@@ -87,11 +90,11 @@ class AppPanel(wx.Panel):
         self.list_ctrl_tags.InsertColumn(0, "Tag\'s name", width=280)
         self.list_ctrl_tags.InsertColumn(1, "Tag\'s rate", width=100)
         left_sizer.Add(self.list_ctrl_tags, 0, wx.ALL | wx.EXPAND, 5)
-        btn_data_tags = [("All tags list", btn_tags_sizer, self.all_tags_window)]
-        for data in btn_data_tags:
+        btn_data_objects = [("All objects list", btn_objects_sizer, self.all_objects_window)]
+        for data in btn_data_objects:
             label, sizer, handler = data
             self.btn_builder(label, sizer, handler)
-        left_sizer.Add(btn_tags_sizer, 0, wx.CENTER)
+        left_sizer.Add(btn_objects_sizer, 0, wx.CENTER)
 
         bmp_image = wx.Image(wx.EXPAND, wx.EXPAND)
         self.image_ctrl = wx.StaticBitmap(self, wx.ID_ANY, wx.Bitmap(bmp_image))
@@ -135,13 +138,8 @@ class AppPanel(wx.Panel):
 
     def update_files_listing(self, folder_path):
         self.current_folder_path = folder_path
-        self.list_ctrl.ClearAll()
+        self.list_ctrl.DeleteAllItems()
         self.file_names.clear()
-
-        self.list_ctrl.InsertColumn(0, "File name", width=250)
-        self.list_ctrl.InsertColumn(1, "Date", width=150)
-        self.list_ctrl.InsertColumn(2, "File extension", width=100)
-        self.list_ctrl.InsertColumn(3, "Size", width=100)
 
         photos = glob.glob(folder_path + "/*.jpg")
         photo_objects = []
@@ -213,9 +211,10 @@ class AppPanel(wx.Panel):
     def open_generator_window(self):
         print("Not implemented")
 
-    def all_tags_window(self, event):
+    def all_objects_window(self, event):
         self.second_window_closed = False
-        second_window = TagsListFrame()
+        second_window = ObjectsListFrame()
+        pub.sendMessage("update_object_list", object_dict=self.objects_dict)
         second_window.Show()
 
     def previous_image(self, event):
@@ -359,20 +358,60 @@ class TagDetailsFrame(wx.Frame):
         self.Close()
 
 
-class TagsListFrame(wx.Frame):
+class ObjectsListFrame(wx.Frame):
     def __init__(self):
-        wx.Frame.__init__(self, None, wx.ID_ANY, "All tags list")
-        panel = wx.Panel(self)
-        self.SetMinSize((500, 320))
+        wx.Frame.__init__(self, None, wx.ID_ANY, "All objects list", size=(500, 320))
+        self.panel = wx.Panel(self)
+
+        pub.subscribe(self.update_object_list, "update_object_list")
 
         main_sizer = wx.BoxSizer(wx.VERTICAL)
+        btn_sizer = wx.BoxSizer(wx.HORIZONTAL)
 
-        msg_label = "Sample text"
-        label_text = wx.StaticText(panel, label=msg_label)
+        msg_label = "List of all objects:"
+        label_text = wx.StaticText(self.panel, label=msg_label)
 
-        main_sizer.Add(label_text, 0, wx.TOP | wx.CENTER, border=15)
+        self.list_ctrl_objects_list = wx.ListCtrl(
+            self.panel, size=(450, 150),
+            style=wx.LC_REPORT | wx.BORDER_SUNKEN
+        )
+        self.list_ctrl_objects_list.InsertColumn(0, "ID", width=50)
+        self.list_ctrl_objects_list.InsertColumn(1, "Label", width=380)
+        btn_data = [("Add new object", btn_sizer, self.add_new_object),
+                    ("Delete selected object", btn_sizer, self.delete_selected_object),
+                    ("Show object\'s photos", btn_sizer, self.show_object_photos)]
+        for data in btn_data:
+            label, sizer, handler = data
+            self.btn_builder(label, sizer, handler)
 
-        panel.SetSizer(main_sizer)
+        main_sizer.Add(label_text, 0, wx.ALL | wx.CENTER, 5)
+        main_sizer.Add(self.list_ctrl_objects_list, 0, wx.ALL | wx.CENTER, 5)
+        main_sizer.Add(btn_sizer, 0, wx.ALL | wx.CENTER, 5)
+
+        self.panel.SetSizer(main_sizer)
+
+    def btn_builder(self, label, sizer, handler):
+        btn = wx.Button(self.panel, label=label)
+        btn.Bind(wx.EVT_BUTTON, handler)
+        sizer.Add(btn, 0, wx.ALL | wx.CENTER, 5)
+
+    def update_object_list(self, object_dict):
+        objects_list = object_dict
+        self.list_ctrl_objects_list.DeleteAllItems()
+        for obj in objects_list.items():
+            self.list_ctrl_objects_list.InsertItem(int(obj[0]), obj[0])
+            self.list_ctrl_objects_list.SetItem(int(obj[0]), 1, obj[1]['label'])
+        self.list_ctrl_objects_list.Refresh()
+
+    def add_new_object(self, event):
+        self.update_object_list()
+        print("Not implemented")
+
+    def delete_selected_object(self, event):
+        print("Not implemented")
+
+    def show_object_photos(self, event):
+        print("Not implemented")
 
 
 class AppFrame(wx.Frame):
