@@ -63,7 +63,8 @@ class AppPanel(wx.Panel):
         self.tag_number = 0
         self.all_tags_data = {}
         self.slider_value = 5
-        self.objects_dict = {"0": {"label": "test"}}
+        self.objects_dict = {"0": {"label": "test"},
+                             "1": {"label": "test2"}}
 
         pub.subscribe(self.tag_details_listener, "tag_details_listener")
 
@@ -214,7 +215,7 @@ class AppPanel(wx.Panel):
     def all_objects_window(self, event):
         self.second_window_closed = False
         second_window = ObjectsListFrame()
-        pub.sendMessage("update_object_list", object_dict=self.objects_dict)
+        pub.sendMessage("update_object_list_after_open_window", object_dict=self.objects_dict)
         second_window.Show()
 
     def previous_image(self, event):
@@ -363,7 +364,11 @@ class ObjectsListFrame(wx.Frame):
         wx.Frame.__init__(self, None, wx.ID_ANY, "All objects list", size=(500, 320))
         self.panel = wx.Panel(self)
 
-        pub.subscribe(self.update_object_list, "update_object_list")
+        self.second_window_closed = True
+        self.objects_list = {}
+
+        pub.subscribe(self.update_object_list_after_open_window, "update_object_list_after_open_window")
+        pub.subscribe(self.update_object_list_after_add_new, "update_object_list_after_add_new")
 
         main_sizer = wx.BoxSizer(wx.VERTICAL)
         btn_sizer = wx.BoxSizer(wx.HORIZONTAL)
@@ -395,23 +400,85 @@ class ObjectsListFrame(wx.Frame):
         btn.Bind(wx.EVT_BUTTON, handler)
         sizer.Add(btn, 0, wx.ALL | wx.CENTER, 5)
 
-    def update_object_list(self, object_dict):
-        objects_list = object_dict
+    def update_object_list(self):
         self.list_ctrl_objects_list.DeleteAllItems()
-        for obj in objects_list.items():
+        for obj in self.objects_list.items():
             self.list_ctrl_objects_list.InsertItem(int(obj[0]), obj[0])
             self.list_ctrl_objects_list.SetItem(int(obj[0]), 1, obj[1]['label'])
         self.list_ctrl_objects_list.Refresh()
 
-    def add_new_object(self, event):
+    def update_object_list_after_open_window(self, object_dict):
+        self.objects_list = object_dict
         self.update_object_list()
-        print("Not implemented")
+
+    def update_object_list_after_add_new(self, new_id, new_label):
+        self.objects_list.update({str(new_id): {"label": new_label}})
+        self.update_object_list()
+
+    def add_new_object(self, event):
+        self.second_window_closed = False
+        second_window = AddNewObject()
+        last_id = int(list(self.objects_list.keys())[-1])
+        pub.sendMessage("get_last_id", last_id=last_id)
+        second_window.Show()
 
     def delete_selected_object(self, event):
         print("Not implemented")
 
     def show_object_photos(self, event):
         print("Not implemented")
+
+
+class AddNewObject(wx.Frame):
+    def __init__(self):
+        wx.Frame.__init__(self, None, wx.ID_ANY, "Add new object", size=(400, 170))
+        self.panel = wx.Panel(self)
+
+        self.label = ""
+        self.id = 0
+
+        pub.subscribe(self.get_last_id, "get_last_id")
+
+        main_sizer = wx.BoxSizer(wx.VERTICAL)
+        btn_sizer = wx.BoxSizer(wx.HORIZONTAL)
+
+        msg_label = "Tag\'s label:"
+        label_text = wx.StaticText(self.panel, label=msg_label)
+
+        label_ctrl = wx.TextCtrl(self.panel)
+        label_ctrl.Bind(wx.EVT_TEXT, self.text_typed)
+
+        btn_data = [("Add new object", btn_sizer, self.add_button),
+                    ("Cancel", btn_sizer, self.cancel_button)]
+        for data in btn_data:
+            label, sizer, handler = data
+            self.btn_builder(label, sizer, handler)
+
+        main_sizer.Add(label_text, 0, wx.TOP | wx.CENTER, border=15)
+        main_sizer.Add(label_ctrl, 0, wx.CENTER, border=15)
+        main_sizer.Add(btn_sizer, 0, wx.ALL | wx.CENTER, 5)
+
+        self.panel.SetSizer(main_sizer)
+
+    def text_typed(self, event):
+        self.label = event.GetString()
+
+    def btn_builder(self, label, sizer, handler):
+        btn = wx.Button(self.panel, label=label)
+        btn.Bind(wx.EVT_BUTTON, handler)
+        sizer.Add(btn, 0, wx.ALL | wx.CENTER, 5)
+
+    def add_button(self, event):
+        pub.sendMessage("update_object_list_after_add_new", new_id=self.id, new_label=self.label)
+        self.label = ""
+        self.id = 0
+        self.Close()
+
+    def cancel_button(self, event):
+        self.Close()
+
+    def get_last_id(self, last_id):
+        self.id = last_id + 1
 
 
 class AppFrame(wx.Frame):
