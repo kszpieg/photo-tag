@@ -361,7 +361,7 @@ class TagDetailsFrame(wx.Frame):
 
 class ObjectsListFrame(wx.Frame):
     def __init__(self):
-        wx.Frame.__init__(self, None, wx.ID_ANY, "All objects list", size=(500, 320))
+        wx.Frame.__init__(self, None, wx.ID_ANY, "All objects list", style=wx.CAPTION, size=(600, 320))
         self.panel = wx.Panel(self)
 
         self.second_window_closed = True
@@ -384,7 +384,8 @@ class ObjectsListFrame(wx.Frame):
         self.list_ctrl_objects_list.InsertColumn(1, "Label", width=380)
         btn_data = [("Add new object", btn_sizer, self.add_new_object),
                     ("Delete selected object", btn_sizer, self.delete_selected_object),
-                    ("Show object\'s photos", btn_sizer, self.show_object_photos)]
+                    ("Show object\'s photos", btn_sizer, self.show_object_photos),
+                    ("Close window", btn_sizer, self.close_window)]
         for data in btn_data:
             label, sizer, handler = data
             self.btn_builder(label, sizer, handler)
@@ -428,10 +429,14 @@ class ObjectsListFrame(wx.Frame):
     def show_object_photos(self, event):
         print("Not implemented")
 
+    def close_window(self, event):
+        print("Zamykanie okna i wysylanie objects_list by object_dict zaktualizowalo")
+        self.Close()
+
 
 class AddNewObject(wx.Frame):
     def __init__(self):
-        wx.Frame.__init__(self, None, wx.ID_ANY, "Add new object", size=(400, 170))
+        wx.Frame.__init__(self, None, wx.ID_ANY, "Add new object", style=wx.CAPTION, size=(400, 170))
         self.panel = wx.Panel(self)
 
         self.label = ""
