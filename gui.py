@@ -65,6 +65,7 @@ class AppPanel(wx.Panel):
         self.all_tags_data = {}
         self.slider_value = 5
         self.objects_dict = {}
+        self.is_list_ctrl_empty = True
 
         pub.subscribe(self.tag_details_listener, "tag_details_listener")
         pub.subscribe(self.close_tag_details_window, "close_tag_details_window")
@@ -162,6 +163,7 @@ class AppPanel(wx.Panel):
             photo_objects.append(photo_object)
             self.row_obj_dict[index] = photo_object
             index += 1
+        self.is_list_ctrl_empty = False
 
     def update_tags_listing(self, file_name):
         self.list_ctrl_tags.ClearAll()
@@ -193,7 +195,8 @@ class AppPanel(wx.Panel):
                     self.update_objects_dict_from_json()
         except IOError:
             wx.LogError("Cannot open the file.")
-        self.color_file_names_after_loading_photos()
+        if not self.is_list_ctrl_empty:
+            self.color_file_names_after_loading_photos()
         print(self.all_tags_data)
 
     def update_objects_dict_from_json(self):
@@ -202,15 +205,14 @@ class AppPanel(wx.Panel):
                 self.objects_dict.update({str(obj[1]["object_id"]): {"label": obj[1]["label"]}})
 
     def color_file_names_after_loading_photos(self):
-        if self.list_ctrl:
-            for file_name in self.all_tags_data:
-                if file_name in self.all_tags_data:
-                    index = 0
-                    for item in self.file_names:
-                        if item == file_name:
-                            break
-                        index += 1
-                    self.list_ctrl.SetItemTextColour(index, wx.Colour(0, 255, 0))
+        for file_name in self.all_tags_data:
+            if file_name in self.all_tags_data:
+                index = 0
+                for item in self.file_names:
+                    if item == file_name:
+                        break
+                    index += 1
+                self.list_ctrl.SetItemTextColour(index, wx.Colour(0, 255, 0))
 
     def select_photo(self, event):
         self.selection = self.list_ctrl.GetFocusedItem()
@@ -226,6 +228,7 @@ class AppPanel(wx.Panel):
         self.second_window_closed = False
         second_window = ObjectsListFrame()
         pub.sendMessage("update_object_list_after_open_window", object_dict=self.objects_dict)
+        pub.sendMessage("get_photos_data", all_tags_data=self.all_tags_data, photos_dict=self.row_obj_dict)
         second_window.Show()
 
     def update_objects_list(self, objects_list):
@@ -429,9 +432,12 @@ class ObjectsListFrame(wx.Frame):
 
         self.second_window_closed = True
         self.objects_list = {}
+        self.all_tags_data = {}
+        self.photos_dict = {}
 
         pub.subscribe(self.update_object_list_after_open_window, "update_object_list_after_open_window")
         pub.subscribe(self.update_object_list_after_add_new, "update_object_list_after_add_new")
+        pub.subscribe(self.get_photos_data, "get_photos_data")
 
         main_sizer = wx.BoxSizer(wx.VERTICAL)
         btn_sizer = wx.BoxSizer(wx.HORIZONTAL)
@@ -478,13 +484,21 @@ class ObjectsListFrame(wx.Frame):
         self.update_object_list()
 
     def update_object_list_after_add_new(self, new_id, new_label):
+        self.second_window_closed = True
         self.objects_list.update({str(new_id): {"label": new_label}})
         self.update_object_list()
+
+    def get_photos_data(self, all_tags_data, photos_dict):
+        self.all_tags_data = all_tags_data
+        self.photos_dict = photos_dict
 
     def add_new_object(self, event):
         self.second_window_closed = False
         second_window = AddNewObjectFrame()
-        last_id = int(list(self.objects_list.keys())[-1])
+        if self.objects_list:
+            last_id = int(list(self.objects_list.keys())[-1])
+        else:
+            last_id = -1
         pub.sendMessage("get_last_id", last_id=last_id)
         second_window.Show()
 
@@ -495,7 +509,14 @@ class ObjectsListFrame(wx.Frame):
         self.update_object_list()
 
     def show_object_photos(self, event):
-        print("Not implemented")
+        self.second_window_closed = False
+        selection = self.list_ctrl_objects_list.GetFocusedItem()
+        obj_id = int(list(self.objects_list.keys())[selection])
+        obj_label = self.objects_list[list(self.objects_list.keys())[selection]]['label']
+        second_window = ShowObjectPhotosFrame()
+        pub.sendMessage("get_data_about_selection", obj_id=obj_id, obj_label=obj_label)
+        pub.sendMessage("get_data_about_photos", all_tags_data=self.all_tags_data, photos_dict=self.photos_dict)
+        second_window.Show()
 
     def close_window(self, event):
         pub.sendMessage("update_objects_list", objects_list=self.objects_list)
@@ -552,6 +573,80 @@ class AddNewObjectFrame(wx.Frame):
 
     def get_last_id(self, last_id):
         self.id = last_id + 1
+
+
+class ShowObjectPhotosFrame(wx.Frame):
+    def __init__(self):
+        wx.Frame.__init__(self, None, wx.ID_ANY, "Show selected object photos", style=wx.CAPTION, size=(600, 320))
+        self.panel = wx.Panel(self)
+
+        self.all_tags_data = {}
+        self.photos_dict = {}
+        self.obj_id = 0
+        self.obj_label = ""
+
+        pub.subscribe(self.get_data_about_selection, "get_data_about_selection")
+        pub.subscribe(self.get_data_about_photos, "get_data_about_photos")
+
+        main_sizer = wx.BoxSizer(wx.VERTICAL)
+        btn_sizer = wx.BoxSizer(wx.HORIZONTAL)
+
+        msg_label = "All photos where is object "
+        self.label_text = wx.StaticText(self.panel, label=msg_label)
+
+        self.list_ctrl_photos_list = wx.ListCtrl(
+            self.panel, size=(450, 150),
+            style=wx.LC_REPORT | wx.BORDER_SUNKEN
+        )
+        self.list_ctrl_photos_list.InsertColumn(0, "File name", width=50)
+        self.list_ctrl_photos_list.InsertColumn(1, "Tag\'s rate on photo", width=380)
+        btn_data = [("Show photo", btn_sizer, self.show_photo),
+                    ("Close window", btn_sizer, self.close_window)]
+        for data in btn_data:
+            label, sizer, handler = data
+            self.btn_builder(label, sizer, handler)
+
+        main_sizer.Add(self.label_text, 0, wx.ALL | wx.CENTER, 5)
+        main_sizer.Add(self.list_ctrl_photos_list, 0, wx.ALL | wx.CENTER, 5)
+        main_sizer.Add(btn_sizer, 0, wx.ALL | wx.CENTER, 5)
+
+        self.panel.SetSizer(main_sizer)
+
+    def btn_builder(self, label, sizer, handler):
+        btn = wx.Button(self.panel, label=label)
+        btn.Bind(wx.EVT_BUTTON, handler)
+        sizer.Add(btn, 0, wx.ALL | wx.CENTER, 5)
+
+    def get_data_about_selection(self, obj_id, obj_label):
+        self.obj_id = obj_id
+        self.obj_label = obj_label
+        self.label_text.SetLabelText("All photos where is object: " + str(self.obj_id) + ". " + self.obj_label)
+
+    def get_data_about_photos(self, all_tags_data, photos_dict):
+        self.all_tags_data = all_tags_data
+        self.photos_dict = photos_dict
+
+        for obj in self.all_tags_data.items():
+            print(obj[1]["tags"])
+
+    def show_photo(self, event):
+        print("Not implemented")
+        # selection = self.list_ctrl_tags.GetFocusedItem()
+        # file_name = self.file_names[self.selection]
+        # label = self.all_tags_data[file_name]['tags'][str(selection)]['label']
+        # bbox = self.all_tags_data[file_name]['tags'][str(selection)]['bbox']
+        # x, y, w, h = bbox
+        # window_name = "Show selected tag"
+        # photo = self.row_obj_dict[self.selection]
+        # optimized_photo = optimize_cv_image(photo)
+        # cv2.namedWindow(window_name)
+        # cv2.rectangle(optimized_photo, pt1=(x, y), pt2=(x + w, y + h), color=(0, 255, 255), thickness=2)
+        # cv2.putText(optimized_photo, label, (x, y + 30), fontFace=cv2.FONT_HERSHEY_PLAIN, fontScale=2,
+        #             color=(0, 255, 255), thickness=2)
+        # cv2.imshow(window_name, optimized_photo)
+
+    def close_window(self, event):
+        self.Close()
 
 
 class AppFrame(wx.Frame):
