@@ -68,6 +68,7 @@ class AppPanel(wx.Panel):
 
         pub.subscribe(self.tag_details_listener, "tag_details_listener")
         pub.subscribe(self.close_tag_details_window, "close_tag_details_window")
+        pub.subscribe(self.update_objects_list, "update_objects_list")
 
         self.list_ctrl = wx.ListCtrl(
             self, size=(650, 150),
@@ -91,7 +92,8 @@ class AppPanel(wx.Panel):
         self.list_ctrl_tags.InsertColumn(0, "Tag\'s name", width=280)
         self.list_ctrl_tags.InsertColumn(1, "Tag\'s rate", width=100)
         left_sizer.Add(self.list_ctrl_tags, 0, wx.ALL | wx.EXPAND, 5)
-        btn_data_objects = [("All objects list", btn_objects_sizer, self.all_objects_window)]
+        btn_data_objects = [("All objects list", btn_objects_sizer, self.all_objects_window),
+                            ("Show selected tag", btn_objects_sizer, self.show_selected_tag)]
         for data in btn_data_objects:
             label, sizer, handler = data
             self.btn_builder(label, sizer, handler)
@@ -225,6 +227,25 @@ class AppPanel(wx.Panel):
         second_window = ObjectsListFrame()
         pub.sendMessage("update_object_list_after_open_window", object_dict=self.objects_dict)
         second_window.Show()
+
+    def update_objects_list(self, objects_list):
+        self.second_window_closed = True
+        self.objects_dict = objects_list
+
+    def show_selected_tag(self, event):
+        selection = self.list_ctrl_tags.GetFocusedItem()
+        file_name = self.file_names[self.selection]
+        label = self.all_tags_data[file_name]['tags'][str(selection)]['label']
+        bbox = self.all_tags_data[file_name]['tags'][str(selection)]['bbox']
+        x, y, w, h = bbox
+        window_name = "Show selected tag"
+        photo = self.row_obj_dict[self.selection]
+        optimized_photo = optimize_cv_image(photo)
+        cv2.namedWindow(window_name)
+        cv2.rectangle(optimized_photo, pt1=(x, y), pt2=(x + w, y + h), color=(0, 255, 255), thickness=2)
+        cv2.putText(optimized_photo, label, (x, y + 30), fontFace=cv2.FONT_HERSHEY_PLAIN, fontScale=2,
+                    color=(0, 255, 255), thickness=2)
+        cv2.imshow(window_name, optimized_photo)
 
     def previous_image(self, event):
         if self.selection == 0:
@@ -477,7 +498,7 @@ class ObjectsListFrame(wx.Frame):
         print("Not implemented")
 
     def close_window(self, event):
-        print("Zamykanie okna i wysylanie objects_list by object_dict zaktualizowalo")
+        pub.sendMessage("update_objects_list", objects_list=self.objects_list)
         self.Close()
 
 
