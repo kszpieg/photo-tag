@@ -381,9 +381,9 @@ class TagDetailsFrame(wx.Frame):
                                 style=wx.SL_HORIZONTAL | wx.SL_LABELS)
         self.slider.Bind(wx.EVT_SLIDER, self.on_slider_scroll)
 
-        checkbox_eyes = wx.CheckBox(self.panel, label="Person's eyes are closed")
-        checkbox_blurred = wx.CheckBox(self.panel, label="Person is blurred")
-        checkbox_others = wx.CheckBox(self.panel, label="Others defects (red eyes, look not at the camera, etc.)")
+        # checkbox_eyes = wx.CheckBox(self.panel, label="Person's eyes are closed")
+        # checkbox_blurred = wx.CheckBox(self.panel, label="Person is blurred")
+        # checkbox_others = wx.CheckBox(self.panel, label="Others defects (red eyes, look not at the camera, etc.)")
 
         btn_data = [("Save tag and close", btn_sizer, self.on_save_and_close),
                     ("Close", btn_sizer, self.close_window)]
@@ -394,10 +394,10 @@ class TagDetailsFrame(wx.Frame):
         main_sizer.Add(label_text, 0, wx.TOP | wx.CENTER, border=15)
         main_sizer.Add(self.object_list_choice, 0, wx.CENTER, border=15)
         main_sizer.Add(rate_text, 0, wx.TOP | wx.CENTER, border=15)
-        main_sizer.Add(self.slider, 0, wx.EXPAND | wx.TOP, border=20)
-        main_sizer.Add(checkbox_eyes, 0, wx.EXPAND | wx.CENTER, border=15)
-        main_sizer.Add(checkbox_blurred, 0, wx.EXPAND | wx.CENTER, border=15)
-        main_sizer.Add(checkbox_others, 0, wx.EXPAND | wx.CENTER, border=15)
+        main_sizer.Add(self.slider, 0, wx.CENTER | wx.TOP, border=20)
+        # main_sizer.Add(checkbox_eyes, 0, wx.EXPAND | wx.CENTER, border=15)
+        # main_sizer.Add(checkbox_blurred, 0, wx.EXPAND | wx.CENTER, border=15)
+        # main_sizer.Add(checkbox_others, 0, wx.EXPAND | wx.CENTER, border=15)
         main_sizer.Add(btn_sizer, 0, wx.CENTER | wx.BOTTOM, border=10)
 
         self.panel.SetSizer(main_sizer)
