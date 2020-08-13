@@ -64,8 +64,7 @@ class AppPanel(wx.Panel):
         self.tag_number = 0
         self.all_tags_data = {}
         self.slider_value = 5
-        self.objects_dict = {"0": {"label": "test"},
-                             "1": {"label": "test2"}}
+        self.objects_dict = {}
 
         pub.subscribe(self.tag_details_listener, "tag_details_listener")
         pub.subscribe(self.close_tag_details_window, "close_tag_details_window")
@@ -185,13 +184,20 @@ class AppPanel(wx.Panel):
             with open(file_path, 'r') as file:
                 if not self.all_tags_data:
                     self.all_tags_data = json.load(file)
+                    self.update_objects_dict_from_json()
                 else:
                     self.all_tags_data.clear()
                     self.all_tags_data = json.load(file)
+                    self.update_objects_dict_from_json()
         except IOError:
             wx.LogError("Cannot open the file.")
         self.color_file_names_after_loading_photos()
         print(self.all_tags_data)
+
+    def update_objects_dict_from_json(self):
+        for list_of_objects in self.all_tags_data.items():
+            for obj in list_of_objects[1]["tags"].items():
+                self.objects_dict.update({str(obj[1]["object_id"]): {"label": obj[1]["label"]}})
 
     def color_file_names_after_loading_photos(self):
         if self.list_ctrl:
@@ -265,11 +271,12 @@ class AppPanel(wx.Panel):
                     pub.sendMessage("get_objects_dict", objects_dict=self.objects_dict)
                     second_window.Show()
 
-    def tag_details_listener(self, label, rate):
+    def tag_details_listener(self, object_id, label, rate):
         if self.tag_number == 0:
             self.tags_data = {
                 "tags": {
                     self.tag_number: {
+                        "object_id": object_id,
                         "label": label,
                         "rate": rate,
                         "bbox": [self.ix, self.iy, self.iw, self.ih]
@@ -278,7 +285,8 @@ class AppPanel(wx.Panel):
             }
         else:
             self.tags_data["tags"].update(
-                {self.tag_number: {"label": label, "rate": rate, "bbox": [self.ix, self.iy, self.iw, self.ih]}})
+                {self.tag_number: {"object_id": object_id, "label": label, "rate": rate,
+                                   "bbox": [self.ix, self.iy, self.iw, self.ih]}})
         self.tag_number += 1
         json_string = json.dumps(self.tags_data)
         print(json_string)
@@ -383,7 +391,7 @@ class TagDetailsFrame(wx.Frame):
     def on_save_and_close(self, event):
         selection = self.object_list_choice.GetSelection()
         self.label = self.objects_list[str(selection)]['label']
-        pub.sendMessage("tag_details_listener", label=self.label, rate=self.value)
+        pub.sendMessage("tag_details_listener", object_id=selection, label=self.label, rate=self.value)
         self.label = ""
         self.value = 5
         self.Close()
