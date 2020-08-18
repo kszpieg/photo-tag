@@ -349,6 +349,7 @@ class AppPanel(wx.Panel):
         self.Refresh()
         self.Layout()
         json_string = json.dumps(self.all_tags_data, indent=2, separators=(',', ': '))
+        print(json_string)
 
     def save_data_to_json(self):
         json_string = json.dumps(self.all_tags_data, indent=2, separators=(',', ': '))
@@ -422,8 +423,10 @@ class TagDetailsFrame(wx.Frame):
 
     def on_save_and_close(self, event):
         selection = self.object_list_choice.GetSelection()
-        self.label = self.objects_list[str(selection)]['label']
-        pub.sendMessage("tag_details_listener", object_id=selection, label=self.label, rate=self.value)
+        selected_object = self.object_list_choice.GetItems()[selection]
+        object_id = selected_object.split(".")[0]
+        self.label = self.objects_list[object_id]['label']
+        pub.sendMessage("tag_details_listener", object_id=object_id, label=self.label, rate=self.value)
         self.label = ""
         self.value = 5
         self.Close()
