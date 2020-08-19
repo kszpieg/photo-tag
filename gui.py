@@ -241,7 +241,7 @@ class AppPanel(wx.Panel):
                 if str(obj[1]['object_id']) not in self.objects_dict.keys():
                     dict_for_del.update({tag[0]: str(obj[0])})
         print(dict_for_del)
-        for item in list(dict_for_del.items()):
+        for item in dict_for_del.items():
             del(self.all_tags_data[item[0]]["tags"][item[1]])
             if not self.all_tags_data[item[0]]["tags"]:
                 del self.all_tags_data[item[0]]
