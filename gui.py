@@ -234,19 +234,17 @@ class AppPanel(wx.Panel):
     def update_objects_list(self, objects_list):
         self.second_window_closed = True
         self.objects_dict = objects_list
-        print("tags:")
         dict_for_del = {}
+        index = 0
         for tag in self.all_tags_data.items():
             for obj in tag[1]["tags"].items():
                 if str(obj[1]['object_id']) not in self.objects_dict.keys():
-                    dict_for_del.update({tag[0]: str(obj[0])})
-        print(dict_for_del)
-        for item in dict_for_del.items():
-            del(self.all_tags_data[item[0]]["tags"][item[1]])
-            if not self.all_tags_data[item[0]]["tags"]:
-                del self.all_tags_data[item[0]]
-            dict_for_del.pop(item[0])
-        print(self.all_tags_data)
+                    dict_for_del.update({index: {"image": tag[0], "tag_id": str(obj[0])}})
+                    index += 1
+        for key in dict_for_del.keys():
+            del(self.all_tags_data[dict_for_del[key]["image"]]["tags"][dict_for_del[key]["tag_id"]])
+            if not self.all_tags_data[dict_for_del[key]["image"]]["tags"]:
+                del self.all_tags_data[dict_for_del[key]["image"]]
 
     def show_selected_tag(self, event):
         selection = self.list_ctrl_tags.GetFocusedItem()
@@ -322,7 +320,7 @@ class AppPanel(wx.Panel):
         if self.tag_number == 0:
             self.tags_data = {
                 "tags": {
-                    self.tag_number: {
+                    str(self.tag_number): {
                         "object_id": object_id,
                         "label": label,
                         "rate": rate,
@@ -332,8 +330,8 @@ class AppPanel(wx.Panel):
             }
         else:
             self.tags_data["tags"].update(
-                {self.tag_number: {"object_id": object_id, "label": label, "rate": rate,
-                                   "bbox": [self.ix, self.iy, self.iw, self.ih]}})
+                {str(self.tag_number): {"object_id": object_id, "label": label, "rate": rate,
+                                        "bbox": [self.ix, self.iy, self.iw, self.ih]}})
         self.tag_number += 1
         json_string = json.dumps(self.tags_data)
         cv2.destroyAllWindows()
