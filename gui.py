@@ -234,6 +234,19 @@ class AppPanel(wx.Panel):
     def update_objects_list(self, objects_list):
         self.second_window_closed = True
         self.objects_dict = objects_list
+        print("tags:")
+        dict_for_del = {}
+        for tag in self.all_tags_data.items():
+            for obj in tag[1]["tags"].items():
+                if str(obj[1]['object_id']) not in self.objects_dict.keys():
+                    dict_for_del.update({tag[0]: str(obj[0])})
+        print(dict_for_del)
+        for item in list(dict_for_del.items()):
+            del(self.all_tags_data[item[0]]["tags"][item[1]])
+            if not self.all_tags_data[item[0]]["tags"]:
+                del self.all_tags_data[item[0]]
+            dict_for_del.pop(item[0])
+        print(self.all_tags_data)
 
     def show_selected_tag(self, event):
         selection = self.list_ctrl_tags.GetFocusedItem()
@@ -348,6 +361,7 @@ class AppPanel(wx.Panel):
         self.created_tags_info_label.SetLabelText("Created tags waiting for saving: " + str(self.created_tags_count))
         self.Refresh()
         self.Layout()
+        self.update_tags_listing(self.file_names[self.selection])
         json_string = json.dumps(self.all_tags_data, indent=2, separators=(',', ': '))
         print(json_string)
 
@@ -426,7 +440,7 @@ class TagDetailsFrame(wx.Frame):
         selected_object = self.object_list_choice.GetItems()[selection]
         object_id = selected_object.split(".")[0]
         self.label = self.objects_list[object_id]['label']
-        pub.sendMessage("tag_details_listener", object_id=object_id, label=self.label, rate=self.value)
+        pub.sendMessage("tag_details_listener", object_id=int(object_id), label=self.label, rate=self.value)
         self.label = ""
         self.value = 5
         self.Close()
@@ -745,8 +759,6 @@ class AppFrame(wx.Frame):
         if dlg.ShowModal() == wx.ID_OK:
             self.panel.load_json_file(dlg.GetPath())
             dlg.Destroy()
-        elif dlg.ShowModal() == wx.ID_CANCEL:
-            return
 
 
 if __name__ == '__main__':
