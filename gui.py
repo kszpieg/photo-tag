@@ -94,6 +94,7 @@ class AppPanel(wx.Panel):
         self.list_ctrl_tags.InsertColumn(1, "Tag\'s rate", width=100)
         left_sizer.Add(self.list_ctrl_tags, 0, wx.ALL | wx.EXPAND, 5)
         btn_data_objects = [("All objects list", btn_objects_sizer, self.all_objects_window),
+                            ("Delete selected tag", btn_objects_sizer, self.delete_selected_tag),
                             ("Show selected tag", btn_objects_sizer, self.show_selected_tag)]
         for data in btn_data_objects:
             label, sizer, handler = data
@@ -181,8 +182,10 @@ class AppPanel(wx.Panel):
         self.image_label.SetLabelText(self.file_names[self.selection])
         if self.file_names[self.selection] in self.all_tags_data:
             self.photo_slider.SetValue(self.all_tags_data[self.file_names[self.selection]]['photo_rate'])
+            self.slider_value = self.photo_slider.GetValue()
         else:
             self.photo_slider.SetValue(5)
+            self.slider_value = self.photo_slider.GetValue()
         self.created_tags_info_label.SetLabelText("Created tags waiting for saving: " + str(self.created_tags_count))
         self.update_tags_listing(self.file_names[self.selection])
 
@@ -258,6 +261,15 @@ class AppPanel(wx.Panel):
                 del self.all_tags_data[dict_for_del[key]["image"]]
         self.reset_color_file_names_to_default()
 
+    def delete_selected_tag(self, event):
+        selection = self.list_ctrl_tags.GetFocusedItem()
+        del(self.all_tags_data[self.file_names[self.selection]]["tags"][str(selection)])
+        if not self.all_tags_data[self.file_names[self.selection]]["tags"]:
+            del self.all_tags_data[self.file_names[self.selection]]
+        print(self.all_tags_data)
+        self.update_tags_listing(self.file_names[self.selection])
+        self.reset_color_file_names_to_default()
+
     def show_selected_tag(self, event):
         selection = self.list_ctrl_tags.GetFocusedItem()
         if selection < 0:
@@ -329,6 +341,11 @@ class AppPanel(wx.Panel):
                     second_window.Show()
 
     def tag_details_listener(self, object_id, label, rate):
+        if self.file_names[self.selection] in self.all_tags_data:
+            self.tag_number = int(list(self.all_tags_data[self.file_names[self.selection]]["tags"].keys())[-1]) + 1
+            self.tags_data = {"tags": {}}
+            self.tags_data["tags"].update(self.all_tags_data[self.file_names[self.selection]]["tags"])
+            print(self.tags_data)
         if self.tag_number == 0:
             self.tags_data = {
                 "tags": {
@@ -345,7 +362,6 @@ class AppPanel(wx.Panel):
                 {str(self.tag_number): {"object_id": object_id, "label": label, "rate": rate,
                                         "bbox": [self.ix, self.iy, self.iw, self.ih]}})
         self.tag_number += 1
-        json_string = json.dumps(self.tags_data)
         cv2.destroyAllWindows()
         self.created_tags_count += 1
         self.created_tags_info_label.SetLabelText("Created tags waiting for saving: " + str(self.created_tags_count))
@@ -356,24 +372,28 @@ class AppPanel(wx.Panel):
         cv2.destroyAllWindows()
 
     def save_tags_on_the_photo(self, event):
-        photo_data = {
-            self.file_names[self.selection]: {
-                "photo_rate": self.slider_value
-            }
-        }
-        photo_data[self.file_names[self.selection]].update(self.tags_data)
-        self.all_tags_data.update(photo_data)
-        self.list_ctrl.SetItemTextColour(self.selection, wx.Colour(0, 255, 0))
-        self.tags_data.clear()
-        self.tag_number = 0
-        self.slider_value = 5
-        self.created_tags_count = 0
-        self.created_tags_info_label.SetLabelText("Created tags waiting for saving: " + str(self.created_tags_count))
-        self.Refresh()
-        self.Layout()
-        self.update_tags_listing(self.file_names[self.selection])
-        json_string = json.dumps(self.all_tags_data, indent=2, separators=(',', ': '))
-        print(json_string)
+        if self.created_tags_count > 0:
+            if self.file_names[self.selection] not in self.all_tags_data:
+                photo_data = {
+                    self.file_names[self.selection]: {
+                        "photo_rate": self.slider_value
+                    }
+                }
+                photo_data[self.file_names[self.selection]].update(self.tags_data)
+                self.all_tags_data.update(photo_data)
+            else:
+                self.all_tags_data[self.file_names[self.selection]].update(self.tags_data)
+            self.list_ctrl.SetItemTextColour(self.selection, wx.Colour(0, 255, 0))
+            self.tags_data.clear()
+            self.tag_number = 0
+            self.slider_value = 5
+            self.created_tags_count = 0
+            self.created_tags_info_label.SetLabelText("Created tags waiting for saving: " + str(self.created_tags_count))
+            self.Refresh()
+            self.Layout()
+            self.update_tags_listing(self.file_names[self.selection])
+            json_string = json.dumps(self.all_tags_data, indent=2, separators=(',', ': '))
+            print(json_string)
 
     def save_data_to_json(self):
         json_string = json.dumps(self.all_tags_data, indent=2, separators=(',', ': '))
