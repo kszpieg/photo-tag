@@ -179,6 +179,10 @@ class AppPanel(wx.Panel):
         bitmap = optimize_bitmap_person(wx.Bitmap(converted_image))
         self.image_ctrl.SetBitmap(bitmap)
         self.image_label.SetLabelText(self.file_names[self.selection])
+        if self.file_names[self.selection] in self.all_tags_data:
+            self.photo_slider.SetValue(self.all_tags_data[self.file_names[self.selection]]['photo_rate'])
+        else:
+            self.photo_slider.SetValue(5)
         self.created_tags_info_label.SetLabelText("Created tags waiting for saving: " + str(self.created_tags_count))
         self.update_tags_listing(self.file_names[self.selection])
 
@@ -213,6 +217,13 @@ class AppPanel(wx.Panel):
                     index += 1
                 self.list_ctrl.SetItemTextColour(index, wx.Colour(0, 255, 0))
 
+    def reset_color_file_names_to_default(self):
+        index = 0
+        for file_name in self.file_names:
+            if file_name not in self.all_tags_data:
+                self.list_ctrl.SetItemTextColour(index, wx.Colour(0, 0, 0))
+            index += 1
+
     def select_photo(self, event):
         self.selection = self.list_ctrl.GetFocusedItem()
         if self.selection >= 0:
@@ -245,6 +256,7 @@ class AppPanel(wx.Panel):
             del(self.all_tags_data[dict_for_del[key]["image"]]["tags"][dict_for_del[key]["tag_id"]])
             if not self.all_tags_data[dict_for_del[key]["image"]]["tags"]:
                 del self.all_tags_data[dict_for_del[key]["image"]]
+        self.reset_color_file_names_to_default()
 
     def show_selected_tag(self, event):
         selection = self.list_ctrl_tags.GetFocusedItem()
