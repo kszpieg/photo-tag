@@ -1,16 +1,15 @@
 from datetime import datetime
 
 import cv2
-import numpy as np
 import wx
 import glob
 import os
 import time
 import json
 from pathlib import Path
-from crop_objects import crop_objects
 from image_converter import wxBitmapFromCvImage
 from pubsub import pub
+from wx.lib.masked import numctrl
 
 
 def optimize_bitmap_person(bitmap):
@@ -187,7 +186,8 @@ class AppPanel(wx.Panel):
             self.photo_slider.SetValue(5)
             self.slider_value = self.photo_slider.GetValue()
         self.created_tags_info_label.SetLabelText("Created tags waiting for saving: " + str(self.created_tags_count))
-        self.update_tags_listing(self.file_names[self.selection])
+        if not self.is_list_ctrl_empty:
+            self.update_tags_listing(self.file_names[self.selection])
 
     def load_json_file(self, file_path):
         self.current_file_path = file_path
@@ -234,8 +234,13 @@ class AppPanel(wx.Panel):
             self.Refresh()
             self.Layout()
 
-    def open_generator_window(self):
-        print("Not implemented")
+    def open_generator_window(self, event):
+        self.second_window_closed = False
+        second_window = SelectionFrame()
+        pub.sendMessage("get_objects_list", object_dict=self.objects_dict)
+        pub.sendMessage("get_tags_data", all_tags_data=self.all_tags_data, photos_dict=self.row_obj_dict,
+                        file_names=self.file_names)
+        second_window.Show()
 
     def all_objects_window(self, event):
         self.second_window_closed = False
@@ -256,14 +261,16 @@ class AppPanel(wx.Panel):
                     dict_for_del.update({index: {"image": tag[0], "tag_id": str(obj[0])}})
                     index += 1
         for key in dict_for_del.keys():
-            del(self.all_tags_data[dict_for_del[key]["image"]]["tags"][dict_for_del[key]["tag_id"]])
+            del (self.all_tags_data[dict_for_del[key]["image"]]["tags"][dict_for_del[key]["tag_id"]])
             if not self.all_tags_data[dict_for_del[key]["image"]]["tags"]:
                 del self.all_tags_data[dict_for_del[key]["image"]]
         self.reset_color_file_names_to_default()
+        if not self.is_list_ctrl_empty:
+            self.update_tags_listing(self.file_names[self.selection])
 
     def delete_selected_tag(self, event):
         selection = self.list_ctrl_tags.GetFocusedItem()
-        del(self.all_tags_data[self.file_names[self.selection]]["tags"][str(selection)])
+        del (self.all_tags_data[self.file_names[self.selection]]["tags"][str(selection)])
         if not self.all_tags_data[self.file_names[self.selection]]["tags"]:
             del self.all_tags_data[self.file_names[self.selection]]
         print(self.all_tags_data)
@@ -388,7 +395,8 @@ class AppPanel(wx.Panel):
             self.tag_number = 0
             self.slider_value = 5
             self.created_tags_count = 0
-            self.created_tags_info_label.SetLabelText("Created tags waiting for saving: " + str(self.created_tags_count))
+            self.created_tags_info_label.SetLabelText(
+                "Created tags waiting for saving: " + str(self.created_tags_count))
             self.Refresh()
             self.Layout()
             self.update_tags_listing(self.file_names[self.selection])
@@ -398,6 +406,205 @@ class AppPanel(wx.Panel):
     def save_data_to_json(self):
         json_string = json.dumps(self.all_tags_data, indent=2, separators=(',', ': '))
         return json_string
+
+
+class SelectionFrame(wx.Frame):
+    def __init__(self):
+        wx.Frame.__init__(self, None, wx.ID_ANY, "Select objects for selection", style=wx.CAPTION, size=(700, 320))
+        self.panel = wx.Panel(self)
+
+        self.second_window_closed = True
+        self.objects_dict = {}
+        self.all_tags_data = {}
+        self.photos_dict = {}
+        self.file_names = []
+        self.input_data = {}
+        self.input_data_index = 0
+
+        pub.subscribe(self.get_objects_list, "get_objects_list")
+        pub.subscribe(self.get_tags_data, "get_tags_data")
+        pub.subscribe(self.update_input_data_list_after_add_new, "update_input_data_list_after_add_new")
+
+        main_sizer = wx.BoxSizer(wx.VERTICAL)
+        btn_sizer = wx.BoxSizer(wx.HORIZONTAL)
+
+        msg_label = "List of objects for algorithm:"
+        label_text = wx.StaticText(self.panel, label=msg_label)
+
+        self.list_ctrl_objects_in_album_list = wx.ListCtrl(
+            self.panel, size=(550, 150),
+            style=wx.LC_REPORT | wx.BORDER_SUNKEN
+        )
+        self.list_ctrl_objects_in_album_list.InsertColumn(0, "ID", width=50)
+        self.list_ctrl_objects_in_album_list.InsertColumn(1, "Label", width=200)
+        self.list_ctrl_objects_in_album_list.InsertColumn(2, "Min number of photos", width=150)
+        self.list_ctrl_objects_in_album_list.InsertColumn(3, "%", width=150)
+        btn_data = [("Add object to list", btn_sizer, self.add_object_to_list),
+                    ("Delete object from list", btn_sizer, self.delete_object_from_list),
+                    ("Run selection algorithm", btn_sizer, self.run_selection_algorithm),
+                    ("Close window", btn_sizer, self.close_window)]
+        for data in btn_data:
+            label, sizer, handler = data
+            self.btn_builder(label, sizer, handler)
+
+        main_sizer.Add(label_text, 0, wx.ALL | wx.CENTER, 5)
+        main_sizer.Add(self.list_ctrl_objects_in_album_list, 0, wx.ALL | wx.CENTER, 5)
+        main_sizer.Add(btn_sizer, 0, wx.ALL | wx.CENTER, 5)
+
+        self.panel.SetSizer(main_sizer)
+
+    def btn_builder(self, label, sizer, handler):
+        btn = wx.Button(self.panel, label=label)
+        btn.Bind(wx.EVT_BUTTON, handler)
+        sizer.Add(btn, 0, wx.ALL | wx.CENTER, 5)
+
+    def update_input_data_list(self):
+        self.list_ctrl_objects_in_album_list.DeleteAllItems()
+        index = 0
+        for obj in self.input_data.items():
+            self.list_ctrl_objects_in_album_list.InsertItem(index, str(obj[1]['object_id']))
+            self.list_ctrl_objects_in_album_list.SetItem(index, 1, obj[1]['object_label'])
+            self.list_ctrl_objects_in_album_list.SetItem(index, 2, str(obj[1]['min_photos']))
+            self.list_ctrl_objects_in_album_list.SetItem(index, 3, str(obj[1]['desire_rate']))
+            index += 1
+        self.list_ctrl_objects_in_album_list.Refresh()
+
+    def get_objects_list(self, object_dict):
+        self.objects_dict = object_dict
+
+    def update_input_data_list_after_add_new(self, new_id, new_label, new_min_photos, new_desire_rate):
+        self.second_window_closed = True
+        if self.input_data_index == 0:
+            self.input_data = {
+                str(self.input_data_index): {
+                    "object_id": new_id,
+                    "object_label": new_label,
+                    "min_photos": new_min_photos,
+                    "desire_rate": new_desire_rate
+                }
+            }
+        else:
+            self.input_data.update(
+                {str(self.input_data_index): {
+                    "object_id": new_id,
+                    "object_label": new_label,
+                    "min_photos": new_min_photos,
+                    "desire_rate": new_desire_rate
+                }
+                })
+        self.input_data_index += 1
+        print(self.input_data)
+        self.update_input_data_list()
+
+    def get_tags_data(self, all_tags_data, photos_dict, file_names):
+        self.all_tags_data = all_tags_data
+        self.photos_dict = photos_dict
+        self.file_names = file_names
+
+    def add_object_to_list(self, event):
+        self.second_window_closed = False
+        second_window = AddNewObjectToListFrame()
+        pub.sendMessage("get_available_objects_dict", available_objects_dict=self.objects_dict)
+        second_window.Show()
+
+    def delete_object_from_list(self, event):
+        selection = self.list_ctrl_objects_in_album_list.GetFocusedItem()
+        self.input_data.pop(str(selection), None)
+        print(self.input_data)
+        self.update_input_data_list()
+
+    def run_selection_algorithm(self, event):
+        print("Not implemented")
+
+    def close_window(self, event):
+        self.Close()
+
+
+class AddNewObjectToListFrame(wx.Frame):
+    def __init__(self):
+        wx.Frame.__init__(self, None, wx.ID_ANY, "Add new object", style=wx.CAPTION, size=(600, 350))
+        self.panel = wx.Panel(self)
+
+        self.id = 0
+        self.label = ""
+        self.min_photos = 0
+        self.desire_rate = 0
+        self.objects_dict = {}
+
+        pub.subscribe(self.get_available_objects_dict, "get_available_objects_dict")
+
+        main_sizer = wx.BoxSizer(wx.VERTICAL)
+        btn_sizer = wx.BoxSizer(wx.HORIZONTAL)
+
+        obj_on_tag_label = "Object on tag:"
+        obj_on_tag_text = wx.StaticText(self.panel, label=obj_on_tag_label)
+
+        self.available_objects_choice = wx.Choice(self.panel, 0, choices=[], size=(300, 50))
+
+        min_photos_label = "Minimum number of photos with this object:"
+        min_photos_text = wx.StaticText(self.panel, label=min_photos_label)
+
+        min_photos_ctrl = wx.lib.masked.numctrl.NumCtrl(self.panel)
+        min_photos_ctrl.Bind(wx.EVT_TEXT, self.text_typed)
+        min_photos_ctrl.SetAllowNegative(False)
+
+        desire_rate = "Desire rate:"
+        desire_text = wx.StaticText(self.panel, label=desire_rate)
+
+        self.input_data_slider = wx.Slider(self.panel, value=self.desire_rate, minValue=0, maxValue=100, size=(400, 50),
+                                           style=wx.SL_HORIZONTAL | wx.SL_LABELS)
+        self.input_data_slider.Bind(wx.EVT_SLIDER, self.on_slider_scroll)
+
+        btn_data = [("Add object to list", btn_sizer, self.add_button),
+                    ("Cancel", btn_sizer, self.cancel_button)]
+        for data in btn_data:
+            label, sizer, handler = data
+            self.btn_builder(label, sizer, handler)
+
+        main_sizer.Add(obj_on_tag_text, 0, wx.TOP | wx.CENTER, border=15)
+        main_sizer.Add(self.available_objects_choice, 0, wx.CENTER, border=15)
+        main_sizer.Add(min_photos_text, 0, wx.TOP | wx.CENTER, border=15)
+        main_sizer.Add(min_photos_ctrl, 0, wx.CENTER, border=15)
+        main_sizer.Add(desire_text, 0, wx.TOP | wx.CENTER, border=15)
+        main_sizer.Add(self.input_data_slider, 0, wx.CENTER | wx.TOP, border=20)
+        main_sizer.Add(btn_sizer, 0, wx.ALL | wx.CENTER, 5)
+
+        self.panel.SetSizer(main_sizer)
+
+    def text_typed(self, event):
+        self.min_photos = int(event.GetString())
+
+    def btn_builder(self, label, sizer, handler):
+        btn = wx.Button(self.panel, label=label)
+        btn.Bind(wx.EVT_BUTTON, handler)
+        sizer.Add(btn, 0, wx.ALL | wx.CENTER, 5)
+
+    def on_slider_scroll(self, event):
+        obj = event.GetEventObject()
+        self.desire_rate = obj.GetValue()
+        font = self.GetFont()
+        font.SetPointSize(self.input_data_slider.GetValue())
+
+    def get_available_objects_dict(self, available_objects_dict):
+        self.objects_dict = available_objects_dict
+        for obj in self.objects_dict.items():
+            string = obj[0] + ". " + obj[1]['label']
+            self.available_objects_choice.Append(string)
+        self.available_objects_choice.SetSelection(0)
+
+    def add_button(self, event):
+        selection = self.available_objects_choice.GetSelection()
+        selected_object = self.available_objects_choice.GetItems()[selection]
+        object_id = selected_object.split(".")[0]
+        self.label = self.objects_dict[object_id]['label']
+        pub.sendMessage("update_input_data_list_after_add_new", new_id=int(object_id), new_label=self.label,
+                        new_min_photos=self.min_photos, new_desire_rate=self.desire_rate)
+        self.label = ""
+        self.id = 0
+        self.Close()
+
+    def cancel_button(self, event):
+        self.Close()
 
 
 class TagDetailsFrame(wx.Frame):
@@ -426,10 +633,6 @@ class TagDetailsFrame(wx.Frame):
                                 style=wx.SL_HORIZONTAL | wx.SL_LABELS)
         self.slider.Bind(wx.EVT_SLIDER, self.on_slider_scroll)
 
-        # checkbox_eyes = wx.CheckBox(self.panel, label="Person's eyes are closed")
-        # checkbox_blurred = wx.CheckBox(self.panel, label="Person is blurred")
-        # checkbox_others = wx.CheckBox(self.panel, label="Others defects (red eyes, look not at the camera, etc.)")
-
         btn_data = [("Save tag and close", btn_sizer, self.on_save_and_close),
                     ("Close", btn_sizer, self.close_window)]
         for data in btn_data:
@@ -440,9 +643,6 @@ class TagDetailsFrame(wx.Frame):
         main_sizer.Add(self.object_list_choice, 0, wx.CENTER, border=15)
         main_sizer.Add(rate_text, 0, wx.TOP | wx.CENTER, border=15)
         main_sizer.Add(self.slider, 0, wx.CENTER | wx.TOP, border=20)
-        # main_sizer.Add(checkbox_eyes, 0, wx.EXPAND | wx.CENTER, border=15)
-        # main_sizer.Add(checkbox_blurred, 0, wx.EXPAND | wx.CENTER, border=15)
-        # main_sizer.Add(checkbox_others, 0, wx.EXPAND | wx.CENTER, border=15)
         main_sizer.Add(btn_sizer, 0, wx.CENTER | wx.BOTTOM, border=10)
 
         self.panel.SetSizer(main_sizer)
