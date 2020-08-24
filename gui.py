@@ -441,7 +441,7 @@ class SelectionFrame(wx.Frame):
         self.list_ctrl_objects_in_album_list.InsertColumn(3, "%", width=150)
         btn_data = [("Add object to list", btn_sizer, self.add_object_to_list),
                     ("Delete object from list", btn_sizer, self.delete_object_from_list),
-                    ("Run selection algorithm", btn_sizer, self.run_selection_algorithm),
+                    ("Run selection algorithm", btn_sizer, self.run_selection_algorithm_window),
                     ("Close window", btn_sizer, self.close_window)]
         for data in btn_data:
             label, sizer, handler = data
@@ -513,7 +513,7 @@ class SelectionFrame(wx.Frame):
         print(self.input_data)
         self.update_input_data_list()
 
-    def run_selection_algorithm(self, event):
+    def run_selection_algorithm_window(self, event):
         self.second_window_closed = False
         second_window = RunSelectionAlgorithmFrame()
         min_number_of_photos = 0
