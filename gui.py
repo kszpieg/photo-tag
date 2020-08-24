@@ -525,8 +525,9 @@ class SelectionFrame(wx.Frame):
         min_number_of_photos = 0
         max_number_of_photos = len(list(self.all_tags_data.keys()))
         for obj in self.input_data.items():
-            min_number_of_photos += obj[1]['min_photos']
-        if min_number_of_photos < max_number_of_photos:
+            if obj[1]['min_photos'] > min_number_of_photos:
+                min_number_of_photos = obj[1]['min_photos']
+        if min_number_of_photos <= max_number_of_photos:
             pub.sendMessage("get_input_data", input_data=self.input_data, all_tags_data=self.all_tags_data,
                             photos_dict=self.photos_dict, file_names=self.file_names)
             second_window.Show()
@@ -536,6 +537,7 @@ class SelectionFrame(wx.Frame):
                                  + str(max_number_of_photos) + "). Please input data correctly"
             wx.MessageBox(string_for_warning, 'Warning', wx.OK | wx.ICON_WARNING)
             self.input_data.clear()
+            self.update_input_data_list()
 
     def close_window(self, event):
         self.Close()
@@ -593,7 +595,8 @@ class RunSelectionAlgorithmFrame(wx.Frame):
         self.file_names = file_names
         self.max_number_of_photos = len(list(self.all_tags_data.keys()))
         for obj in self.input_data.items():
-            self.min_number_of_photos += obj[1]['min_photos']
+            if obj[1]['min_photos'] > self.min_number_of_photos:
+                self.min_number_of_photos = obj[1]['min_photos']
         string_for_label = "How many photos should be in album? (" + str(self.min_number_of_photos) + " - " + str(
             self.max_number_of_photos) + " photos)"
         self.label_text.SetLabelText(string_for_label)
