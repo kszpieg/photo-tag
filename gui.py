@@ -13,26 +13,32 @@ from wx.lib.masked import numctrl
 
 
 def optimize_bitmap_person(bitmap):
-    if bitmap.GetWidth() > 700:
+    screensize = wx.DisplaySize()
+    w = screensize[0] * 0.35
+    h = screensize[1] * 0.64
+    if bitmap.GetWidth() > w:
         image = bitmap.ConvertToImage()
-        calculated_height = (bitmap.GetHeight() * 700) / bitmap.GetWidth()
-        bitmap = wx.Bitmap(image.Scale(700, calculated_height))
-    if bitmap.GetHeight() > 700:
+        calculated_height = (bitmap.GetHeight() * w) / bitmap.GetWidth()
+        bitmap = wx.Bitmap(image.Scale(w, calculated_height))
+    if bitmap.GetHeight() > h:
         image = bitmap.ConvertToImage()
-        calculated_width = (bitmap.GetWidth() * 700) / bitmap.GetHeight()
-        bitmap = wx.Bitmap(image.Scale(calculated_width, 700))
+        calculated_width = (bitmap.GetWidth() * h) / bitmap.GetHeight()
+        bitmap = wx.Bitmap(image.Scale(calculated_width, h))
     return bitmap
 
 
 def optimize_cv_image(image):
     h, w = image.shape[:2]
-    if w > 700:
-        calculated_height = int((h * 700) / w)
-        resized_img = cv2.resize(image, (700, calculated_height))
+    screensize = wx.DisplaySize()
+    display_w = screensize[0] * 0.35
+    display_h = screensize[1] * 0.64
+    if w > display_w:
+        calculated_height = int((h * display_w) / w)
+        resized_img = cv2.resize(image, (display_w, calculated_height))
         image = resized_img
-    if h > 700:
-        calculated_width = int((w * 700) / h)
-        resized_img = cv2.resize(image, (calculated_width, 700))
+    if h > display_h:
+        calculated_width = int((w * display_h) / h)
+        resized_img = cv2.resize(image, (calculated_width, display_h))
         image = resized_img
     return image
 
@@ -1020,7 +1026,10 @@ class AppFrame(wx.Frame):
         super(AppFrame, self).__init__(parent=None, title="Album Generator")
         self.panel = AppPanel(self)
         self.create_menu()
-        self.SetMinSize((1450, 750))
+        screensize = wx.DisplaySize()
+        w = screensize[0] * 0.75
+        h = screensize[1] * 0.85
+        self.SetMinSize((w, h))
         self.Maximize()
         self.Show()
 
