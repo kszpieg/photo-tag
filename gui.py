@@ -514,9 +514,96 @@ class SelectionFrame(wx.Frame):
         self.update_input_data_list()
 
     def run_selection_algorithm(self, event):
-        print("Not implemented")
+        self.second_window_closed = False
+        second_window = RunSelectionAlgorithmFrame()
+        min_number_of_photos = 0
+        max_number_of_photos = len(list(self.all_tags_data.keys()))
+        for obj in self.input_data.items():
+            min_number_of_photos += obj[1]['min_photos']
+        if min_number_of_photos < max_number_of_photos:
+            pub.sendMessage("get_input_data", input_data=self.input_data, all_tags_data=self.all_tags_data,
+                            photos_dict=self.photos_dict, file_names=self.file_names)
+            second_window.Show()
+        else:
+            string_for_warning = "You have a bigger sum of minimal numbers of photos for each object (" \
+                                 + str(min_number_of_photos) + ") than number of photos that are tagged (" \
+                                 + str(max_number_of_photos) + "). Please input data correctly"
+            wx.MessageBox(string_for_warning, 'Warning', wx.OK | wx.ICON_WARNING)
+            self.input_data.clear()
 
     def close_window(self, event):
+        self.Close()
+
+
+class RunSelectionAlgorithmFrame(wx.Frame):
+    def __init__(self):
+        wx.Frame.__init__(self, None, wx.ID_ANY, "Run selection algorithm", style=wx.CAPTION, size=(400, 170))
+        self.panel = wx.Panel(self)
+
+        self.album_photos_limit = 0
+        self.input_data = {}
+        self.all_tags_data = {}
+        self.photos_dict = {}
+        self.file_names = []
+        self.min_number_of_photos = 0
+        self.max_number_of_photos = 0
+
+        pub.subscribe(self.get_input_data, "get_input_data")
+
+        main_sizer = wx.BoxSizer(wx.VERTICAL)
+        btn_sizer = wx.BoxSizer(wx.HORIZONTAL)
+
+        msg_label = "How many photos should be in album?"
+        self.label_text = wx.StaticText(self.panel, label=msg_label)
+
+        album_photos_limit_ctrl = wx.lib.masked.numctrl.NumCtrl(self.panel)
+        album_photos_limit_ctrl.Bind(wx.EVT_TEXT, self.text_typed)
+        album_photos_limit_ctrl.SetAllowNegative(False)
+
+        btn_data = [("Run algorithm", btn_sizer, self.run_algorithm_button),
+                    ("Cancel", btn_sizer, self.cancel_button)]
+        for data in btn_data:
+            label, sizer, handler = data
+            self.btn_builder(label, sizer, handler)
+
+        main_sizer.Add(self.label_text, 0, wx.TOP | wx.CENTER, border=15)
+        main_sizer.Add(album_photos_limit_ctrl, 0, wx.CENTER, border=15)
+        main_sizer.Add(btn_sizer, 0, wx.ALL | wx.CENTER, 5)
+
+        self.panel.SetSizer(main_sizer)
+
+    def text_typed(self, event):
+        self.album_photos_limit = int(event.GetString())
+
+    def btn_builder(self, label, sizer, handler):
+        btn = wx.Button(self.panel, label=label)
+        btn.Bind(wx.EVT_BUTTON, handler)
+        sizer.Add(btn, 0, wx.ALL | wx.CENTER, 5)
+
+    def get_input_data(self, input_data, all_tags_data, photos_dict, file_names):
+        self.input_data = input_data
+        self.all_tags_data = all_tags_data
+        self.photos_dict = photos_dict
+        self.file_names = file_names
+        self.max_number_of_photos = len(list(self.all_tags_data.keys()))
+        for obj in self.input_data.items():
+            self.min_number_of_photos += obj[1]['min_photos']
+        string_for_label = "How many photos should be in album? (" + str(self.min_number_of_photos) + " - " + str(
+            self.max_number_of_photos) + " photos)"
+        self.label_text.SetLabelText(string_for_label)
+
+    def run_algorithm_button(self, event):
+        if self.min_number_of_photos <= self.album_photos_limit <= self.max_number_of_photos:
+            self.selection_algorithm()
+            self.Close()
+        else:
+            wx.MessageBox('Album photos limit is not correct!', 'Warning',
+                          wx.OK | wx.ICON_WARNING)
+
+    def selection_algorithm(self):
+        print("Wohooo!")
+
+    def cancel_button(self, event):
         self.Close()
 
 
