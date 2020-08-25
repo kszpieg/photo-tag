@@ -666,7 +666,7 @@ class RunSelectionAlgorithmFrame(wx.Frame):
             for obj in photos[best_photo]['objects']:
                 if obj in objects_to_album.keys():
                     if objects_to_album[obj]['actual_photos'] < objects_to_album[obj]['min_photos']:
-                        objects_to_album[obj]['desire_rate'] -= objects_to_album[obj]['desire_rate_dec'] + C
+                        objects_to_album[obj]['desire_rate'] -= (objects_to_album[obj]['desire_rate_dec'] * C)
                         objects_to_album[obj]['actual_photos'] += 1
             photos.pop(best_photo, None)
             self.album.append([best_photo, best_final_rate])
