@@ -6,6 +6,7 @@ import glob
 import os
 import time
 import json
+import shutil
 from pathlib import Path
 from image_converter import wxBitmapFromCvImage
 from pubsub import pub
@@ -30,8 +31,8 @@ def optimize_bitmap_person(bitmap):
 def optimize_cv_image(image):
     h, w = image.shape[:2]
     screensize = wx.DisplaySize()
-    display_w = screensize[0] * 0.35
-    display_h = screensize[1] * 0.64
+    display_w = int(screensize[0] * 0.35)
+    display_h = int(screensize[1] * 0.64)
     if w > display_w:
         calculated_height = int((h * display_w) / w)
         resized_img = cv2.resize(image, (display_w, calculated_height))
@@ -245,7 +246,7 @@ class AppPanel(wx.Panel):
         second_window = SelectionFrame()
         pub.sendMessage("get_objects_list", object_dict=self.objects_dict)
         pub.sendMessage("get_tags_data", all_tags_data=self.all_tags_data, photos_dict=self.row_obj_dict,
-                        file_names=self.file_names)
+                        file_names=self.file_names, folder_path=self.current_folder_path)
         second_window.Show()
 
     def all_objects_window(self, event):
@@ -424,6 +425,7 @@ class SelectionFrame(wx.Frame):
         self.all_tags_data = {}
         self.photos_dict = {}
         self.file_names = []
+        self.folder_path = ""
         self.input_data = {}
         self.input_data_index = 0
 
@@ -502,10 +504,11 @@ class SelectionFrame(wx.Frame):
         print(self.input_data)
         self.update_input_data_list()
 
-    def get_tags_data(self, all_tags_data, photos_dict, file_names):
+    def get_tags_data(self, all_tags_data, photos_dict, file_names, folder_path):
         self.all_tags_data = all_tags_data
         self.photos_dict = photos_dict
         self.file_names = file_names
+        self.folder_path = folder_path
 
     def add_object_to_list(self, event):
         self.second_window_closed = False
@@ -529,7 +532,7 @@ class SelectionFrame(wx.Frame):
                 min_number_of_photos = obj[1]['min_photos']
         if min_number_of_photos <= max_number_of_photos:
             pub.sendMessage("get_input_data", input_data=self.input_data, all_tags_data=self.all_tags_data,
-                            photos_dict=self.photos_dict, file_names=self.file_names)
+                            photos_dict=self.photos_dict, file_names=self.file_names, folder_path=self.folder_path)
             second_window.Show()
         else:
             string_for_warning = "You have a bigger sum of minimal numbers of photos for each object (" \
@@ -553,8 +556,10 @@ class RunSelectionAlgorithmFrame(wx.Frame):
         self.all_tags_data = {}
         self.photos_dict = {}
         self.file_names = []
+        self.folder_path = ""
         self.min_number_of_photos = 0
         self.max_number_of_photos = 0
+        self.album = []
 
         pub.subscribe(self.get_input_data, "get_input_data")
 
@@ -588,11 +593,12 @@ class RunSelectionAlgorithmFrame(wx.Frame):
         btn.Bind(wx.EVT_BUTTON, handler)
         sizer.Add(btn, 0, wx.ALL | wx.CENTER, 5)
 
-    def get_input_data(self, input_data, all_tags_data, photos_dict, file_names):
+    def get_input_data(self, input_data, all_tags_data, photos_dict, file_names, folder_path):
         self.input_data = input_data
         self.all_tags_data = all_tags_data
         self.photos_dict = photos_dict
         self.file_names = file_names
+        self.folder_path = folder_path
         self.max_number_of_photos = len(list(self.all_tags_data.keys()))
         for obj in self.input_data.items():
             if obj[1]['min_photos'] > self.min_number_of_photos:
@@ -610,7 +616,73 @@ class RunSelectionAlgorithmFrame(wx.Frame):
                           wx.OK | wx.ICON_WARNING)
 
     def selection_algorithm(self):
-        print("Wohooo!")
+        photos = {}
+        objects_to_album = {}
+        C = 0.01
+        for data in self.input_data.items():
+            objects_to_album[data[1]['object_id']] = {'min_photos': data[1]['min_photos'],
+                                                      'actual_photos': 0,
+                                                      'desire_rate': (data[1]['desire_rate'] / 100),
+                                                      'desire_rate_dec': ((data[1]['desire_rate'] / 100) / data[1][
+                                                          'min_photos'])}
+        for image in self.all_tags_data.keys():
+            photos[image] = {}
+            photos[image]['global_rate'] = self.all_tags_data[image]['photo_rate']
+            list_of_objects = []
+            cnt = 1
+            for obj in self.all_tags_data[image]['tags'].items():
+                list_of_objects.append(obj[1]['object_id'])
+                if obj[1]['object_id'] in objects_to_album.keys():
+                    cnt += 1
+                    photos[image]['global_rate'] += obj[1]['rate']
+            photos[image]['global_rate'] = photos[image]['global_rate'] / cnt
+            photos[image]['final_rate'] = 0
+            photos[image]['objects'] = list_of_objects
+
+        for i in range(self.album_photos_limit):
+            min_fulfilled = True
+            for obj in objects_to_album.items():
+                if obj[1]['actual_photos'] < obj[1]['min_photos']:
+                    min_fulfilled = False
+
+            for image in photos.items():
+                cnt = 0
+                desire_rate = 0
+                image[1]['final_rate'] = image[1]['global_rate']
+                for obj in image[1]['objects']:
+                    if obj in objects_to_album.keys():
+                        desire_rate += objects_to_album[obj]['desire_rate']
+                        cnt += 1
+                if cnt > 0:
+                    desire_rate = desire_rate / cnt
+                if desire_rate > 0 or min_fulfilled is False:
+                    image[1]['final_rate'] *= desire_rate
+            best_final_rate = 0
+            best_photo = ""
+            for image in photos.items():
+                if image[1]['final_rate'] > best_final_rate:
+                    best_photo = image[0]
+                    best_final_rate = image[1]['final_rate']
+            for obj in photos[best_photo]['objects']:
+                if obj in objects_to_album.keys():
+                    if objects_to_album[obj]['actual_photos'] < objects_to_album[obj]['min_photos']:
+                        objects_to_album[obj]['desire_rate'] -= objects_to_album[obj]['desire_rate_dec'] + C
+                        objects_to_album[obj]['actual_photos'] += 1
+            photos.pop(best_photo, None)
+            self.album.append([best_photo, best_final_rate])
+        self.generate_album()
+
+    def generate_album(self):
+        path_for_album = "C:/Users/kszpieg/PycharmProjects/photo-tag/album"
+        if os.path.exists(path_for_album) and os.path.isdir(path_for_album):
+            shutil.rmtree(path_for_album)
+        os.mkdir(path_for_album)
+        for photo in self.album:
+            path_to_file = self.folder_path + "\\" + photo[0]
+            shutil.copy(path_to_file, path_for_album)
+        with open(path_for_album + "/selection_result.txt", "w") as data_file:
+            for item in self.album:
+                data_file.write("%s\n" % item)
 
     def cancel_button(self, event):
         self.Close()
