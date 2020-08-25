@@ -619,6 +619,7 @@ class RunSelectionAlgorithmFrame(wx.Frame):
         photos = {}
         objects_to_album = {}
         C = 0.01
+        C_for_others = 0.01
         for data in self.input_data.items():
             objects_to_album[data[1]['object_id']] = {'min_photos': data[1]['min_photos'],
                                                       'actual_photos': 0,
@@ -655,8 +656,9 @@ class RunSelectionAlgorithmFrame(wx.Frame):
                         cnt += 1
                 if cnt > 0:
                     desire_rate = desire_rate / cnt
-                if desire_rate > 0 or min_fulfilled is False:
-                    image[1]['final_rate'] *= desire_rate
+                else:
+                    desire_rate = C_for_others
+                image[1]['final_rate'] *= desire_rate
             best_final_rate = 0
             best_photo = ""
             for image in photos.items():
