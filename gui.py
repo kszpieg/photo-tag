@@ -673,7 +673,7 @@ class RunSelectionAlgorithmFrame(wx.Frame):
         self.generate_album()
 
     def generate_album(self):
-        path_for_album = "C:/Users/kszpieg/PycharmProjects/photo-tag/album"
+        path_for_album = "./album"
         if os.path.exists(path_for_album) and os.path.isdir(path_for_album):
             shutil.rmtree(path_for_album)
         os.mkdir(path_for_album)
